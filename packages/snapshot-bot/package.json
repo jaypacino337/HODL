@@ -1,0 +1,32 @@
+{
+  "name": "@sherwood/snapshot-bot",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "ts-node src/index.ts",
+    "dev": "ts-node-dev --respawn src/index.ts"
+  },
+  "dependencies": {
+    "@sherwood/shared": "^0.1.0",
+    "@sherwood/fee-harvester": "^0.1.0",
+    "@sherwood/autolp": "^0.1.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.3",
+    "better-sqlite3": "^11.3.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^4.17.21",
+    "@types/node-cron": "^3.0.11",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.5.4"
+  }
+}

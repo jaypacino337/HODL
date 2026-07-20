@@ -1,0 +1,20 @@
+{
+  "name": "sherwood-protocol",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Sherwood Protocol ($ARROW) — a Solana token that harvests pump.fun creator fees, auto-compounds a share into liquidity, and airdrops the rest to holders every 15 minutes.",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "dev:website": "npm run dev --workspace packages/website",
+    "start:bot": "npm run start --workspace packages/snapshot-bot"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "license": "MIT"
+}

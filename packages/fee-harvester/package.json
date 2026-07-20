@@ -1,0 +1,20 @@
+{
+  "name": "@sherwood/fee-harvester",
+  "version": "0.1.0",
+  "private": true,
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "harvest": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "@sherwood/shared": "^0.1.0",
+    "@solana/spl-token": "^0.4.9",
+    "@solana/web3.js": "^1.95.3"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
