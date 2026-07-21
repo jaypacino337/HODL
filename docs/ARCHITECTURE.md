@@ -1,74 +1,95 @@
 # Architecture
 
 ```
-                         ┌─────────────────────┐
-                         │      pump.fun        │
-                         │  bonding curve / AMM  │
-                         └──────────┬────────────┘
-                                    │ trading fees accrue to
-                                    │ per-creator vault PDA
-                                    ▼
-┌───────────────┐   claim    ┌───────────────────┐   split    ┌────────────┐
-│ fee-authority   │──────────▶│  fee-harvester     │──────────▶│  LP vault   │
-│ wallet          │           │  (packages/         │           │            │
-└───────────────┘           │   fee-harvester)    │           └─────┬──────┘
-                              └──────────┬──────────┘                 │
-                                         │                            │ deposit
-                                         │                            ▼
-                                         │                    ┌────────────────┐
-                                         │                    │  autolp          │
-                                         │                    │  (Raydium CPMM)  │
-                                         │                    └────────────────┘
-                                         ▼
-                              ┌────────────────────┐
-                              │   rewards vault      │
-                              └──────────┬───────────┘
-                                         │
-                                         ▼
-                          ┌──────────────────────────────┐
-                          │        snapshot-bot            │
-                          │  every 15 min:                 │
-                          │   1. fetch all $ARROW holders   │
-                          │   2. compute pro-rata payouts   │
-                          │   3. batch-send SOL transfers   │
-                          │   4. persist to SQLite          │
-                          │   5. expose /api/stats          │
-                          └──────────────┬─────────────────┘
-                                         │
-                                         ▼
-                              ┌────────────────────┐
-                              │      website          │
-                              │  (packages/website)   │
-                              │  reads /api/stats      │
-                              └────────────────────┘
+                     ┌─────────────────────────────────────────────┐
+                     │                 SOLANA                      │
+                     │  pump.fun creator-fee vaults   game vault   │
+                     │  (bonding curve + PumpSwap)    (SOL pot)    │
+                     └────────▲───────────────▲──────────┬─────────┘
+                              │ claim (15min) │ balances │ payouts
+                              │               │          ▼
+┌──────────────┐   HTTPS   ┌──┴───────────────┴─────────────────────┐
+│   WEBSITE    │──────────▶│              GAME-WORKER               │
+│   (Vercel)   │  /api/*   │              (Railway)                 │
+│              │           │  cron: claim → settle → open round     │
+│ wallet sign  │           │  API: state / history / pick           │
+└──────────────┘           └──────────────────┬─────────────────────┘
+                                              │ service-role writes
+                                              ▼
+                           ┌────────────────────────────────────────┐
+                           │           SUPABASE (Postgres)          │
+                           │ rounds · picks · payouts · fee_claims  │
+                           │ views: round_summaries · leaderboard   │
+                           └────────────────────────────────────────┘
 ```
 
-## Packages
+## The 15-minute cycle (`game-worker/src/engine.ts`)
 
-| Package | Responsibility |
+Every `ROUND_INTERVAL_MS` (default 15 min) the worker runs one tick:
+
+1. **CLAIM** — `harvestPumpFunCreatorFees()` checks both creator-fee vaults
+   (bonding-curve PDA pre-graduation, PumpSwap PDA post-graduation) and
+   claims anything accrued. Fees land as SOL in the game vault, which is the
+   coin's creator wallet. Each claim is logged to `fee_claims`.
+2. **SETTLE** — for the round whose `settles_at` has passed:
+   - Pot = vault balance − `VAULT_RESERVE_LAMPORTS` (rollover included).
+   - Fetch a **finalized blockhash**; `sha256(blockhash | round-N)[0]`
+     even → HODL, odd → NO HODL. Stored on the round row for public audit.
+   - Re-fetch each picker's live token balance. Below the 500K threshold →
+     pick voided. Otherwise the balance is the player's **weight**.
+   - Winners = pickers on the winning side; each gets
+     `pot × weight / totalWinnerWeight`, sent as batched SOL transfers
+     (10 per tx). Results land in `payouts` with tx signatures.
+   - No winners → nothing sent; the pot stays in the vault and rolls over.
+3. **OPEN** — insert the next round (`locks_at` = `settles_at` − 30s).
+
+A 30-second watchdog also settles overdue rounds after restarts, so a
+Railway redeploy mid-round never wedges the game.
+
+## Picks are signed messages, not transactions
+
+The website asks the connected wallet to `signMessage()` the canonical
+string from `@hodl/shared`'s `pickMessage()`:
+
+```
+HODL OR NO HODL | round 42 | pick HODL | wallet <base58>
+```
+
+`POST /api/pick` re-derives that exact string and verifies the ed25519
+signature against the claimed pubkey (tweetnacl), so nobody can pick on
+behalf of a wallet they don't control. The worker then checks the wallet's
+live token balance against `MIN_HOLD_TOKENS` before accepting. Picks
+upsert — players can flip sides freely until `locks_at`.
+
+Playing is therefore free (no gas), can't move funds, and requires no
+approvals — the only on-chain movement is the worker paying winners.
+
+## Why the flip can't be gamed
+
+- Players can't game it: picks lock 30s before settlement, and the deciding
+  blockhash doesn't exist yet at lock time.
+- The operator *could* delay settlement fishing for a favorable hash —
+  which is why the blockhash is stored and the settle time is public; any
+  tampering is visible as a late settle. For stronger guarantees, swap in a
+  VRF (e.g. Switchboard) — the seam is `decideWinningSide()`, one function.
+
+## Data model (Supabase)
+
+| Table | Purpose |
 |---|---|
-| `packages/shared` | Env-driven config loader, shared TypeScript types, RPC connection helper. |
-| `packages/token-launch` | Optional: creates a Token-2022 mint with the `TransferFee` extension, for a self-launch (non-pump.fun) path. |
-| `packages/fee-harvester` | Claims pump.fun creator-fee rewards (bonding curve + post-graduation AMM) and/or Token-2022 withheld transfer fees; splits proceeds between the LP vault and rewards vault. |
-| `packages/autolp` | Deposits the LP vault's SOL into the ARROW/SOL Raydium pool once one exists. |
-| `packages/snapshot-bot` | The orchestrator: runs the full cycle on a cron (default every 15 minutes), persists snapshots/distributions to SQLite, and serves a small stats API. |
-| `packages/website` | Next.js marketing site + live dashboard, reads from the snapshot-bot's API. |
+| `rounds` | one row per round: timing, status, pot, winning side, decision blockhash |
+| `picks` | PK `(round_id, wallet)`: side, balance at pick, signature |
+| `payouts` | winner, weight, amount, payout tx signature, sent/failed |
+| `fee_claims` | every creator-fee claim with tx signature |
 
-## Why pump.fun fees aren't a per-transfer tax
+Views `round_summaries`, `leaderboard`, `game_totals` pre-aggregate what
+the API serves. RLS: everything world-readable; only the worker's
+service-role key writes. Token amounts are `numeric` (SPL u64 can overflow
+signed bigint).
 
-Classic "reflection" meme coins (SafeMoon-style) work by taxing every transfer
-at the SPL Token level. pump.fun doesn't support that: coins launched there
-are plain SPL mints with no transfer hook, because pump.fun controls
-distribution entirely through its own bonding-curve program. What pump.fun
-*does* give the token's creator is a cut of trading fees, claimable via a
-permissionless `collectCreatorFee` instruction (see
-`packages/fee-harvester/src/harvestPumpFunCreatorFees.ts`, verified against
-[pump-fun/pump-public-docs](https://github.com/pump-fun/pump-public-docs)).
-Sherwood's harvester automates that claim and treats it as the fee source
-that funds LP growth and holder rewards.
+## Trust model
 
-If you'd rather have a true automatic per-transfer tax instead of relying on
-pump.fun's creator-fee program, use the `packages/token-launch` path to mint
-a Token-2022 token with the `TransferFee` extension and pair it on Raydium
-directly, skipping pump.fun entirely. `fee-harvester` supports harvesting
-both sources.
+Custodial by design for v1: the creator wallet is the vault and the worker
+signs payouts. Every fee claim and payout is an on-chain signature recorded
+in Supabase and rendered on the site, so operators can be audited. The
+serverless-free worker (one Railway service) keeps ops surface minimal.

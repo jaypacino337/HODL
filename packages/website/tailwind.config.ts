@@ -5,31 +5,47 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        sherwood: {
-          50: "#eefbf3",
-          100: "#d5f5e0",
-          200: "#a8e9c1",
-          300: "#71d69d",
-          400: "#3fbd79",
-          500: "#1f9f5f",
-          600: "#147d4b",
-          700: "#12633f",
-          800: "#124f35",
-          900: "#0b2e1f",
-          950: "#061a12",
+        stage: {
+          950: "#0a0203",
+          900: "#140406",
+          800: "#22070a",
+          700: "#38090e",
+        },
+        ember: {
+          400: "#ff6a3d",
+          500: "#ff3d1f",
+          600: "#e02412",
+          700: "#b3160c",
         },
         gold: {
-          400: "#f2cf6d",
-          500: "#e6b73f",
-          600: "#c8952a",
+          200: "#ffe9a8",
+          300: "#ffd968",
+          400: "#f6b93b",
+          500: "#e8a020",
+          600: "#c07f12",
         },
       },
       fontFamily: {
-        display: ["var(--font-display)"],
-        body: ["var(--font-body)"],
+        display: ["Anton", "Impact", "'Arial Narrow Bold'", "sans-serif"],
+        body: ["'Inter'", "system-ui", "sans-serif"],
+      },
+      boxShadow: {
+        "glow-gold": "0 0 25px rgba(246,185,59,0.45), 0 0 60px rgba(246,185,59,0.15)",
+        "glow-red": "0 0 25px rgba(255,61,31,0.5), 0 0 60px rgba(224,36,18,0.2)",
       },
       backgroundImage: {
-        "radial-fade": "radial-gradient(circle at 50% 0%, rgba(63,189,121,0.18), transparent 60%)",
+        "stage-spotlight":
+          "radial-gradient(ellipse at 50% -10%, rgba(255,61,31,0.28), transparent 55%), radial-gradient(ellipse at 15% 110%, rgba(246,185,59,0.12), transparent 50%), radial-gradient(ellipse at 85% 110%, rgba(224,36,18,0.14), transparent 50%)",
+        "gold-metal": "linear-gradient(180deg, #ffe9a8 0%, #f6b93b 45%, #c07f12 55%, #f6b93b 100%)",
+      },
+      keyframes: {
+        shimmer: {
+          "0%, 100%": { opacity: "1" },
+          "50%": { opacity: "0.55" },
+        },
+      },
+      animation: {
+        shimmer: "shimmer 2.4s ease-in-out infinite",
       },
     },
   },

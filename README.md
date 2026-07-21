@@ -1,79 +1,71 @@
-# 🏹 Sherwood Protocol ($ARROW)
+# 💼 HODL OR NO HODL
 
-**Take from the trades. Give to the holders.**
+**The on-chain game show. Every 15 minutes, the fees fund the pot — pick a side and win it.**
 
-Sherwood Protocol is a Solana token that automates the whole loop of a
-fee-funded, self-distributing token:
+This is the full working implementation of [hodlornohodl.fun](https://www.hodlornohodl.fun):
+a Solana game where the token *plays itself*:
 
-1. **Launch** on pump.fun (or self-launch via Token-2022 transfer fees — see below).
-2. **Harvest** — claim pump.fun's creator-fee share of trading volume.
-3. **Split** — a configurable share compounds into the ARROW/SOL liquidity pool, the rest funds a rewards vault.
-4. **Snapshot** — every 15 minutes, every holder's balance is recorded.
-5. **Airdrop** — the rewards vault pays out pro-rata to every eligible holder, automatically, no claiming.
+1. **CLAIM** — every 15 minutes the game claims the coin's pump.fun **creator fees** into the game vault. Trading volume is the prize pool; nobody deposits anything.
+2. **QUALIFY** — anyone holding **500,000+ tokens** can play each round, free. A pick is a signed message: no transaction, no gas.
+3. **PICK** — choose your case: **HODL** or **NO HODL**. Switch any time until the round locks (30s before the flip).
+4. **FLIP** — at the buzzer a fresh finalized Solana blockhash decides the winning side. The blockhash is stored with the round so anyone can recompute the result.
+5. **PAY** — winners split the entire pot **pro-rata by how much they hold** (your bag is your score), paid instantly in SOL. If nobody picked the winning side, the pot rolls over and grows.
 
-This repo is the full working implementation: on-chain interactions, the
-scheduler/bot, a SQLite ledger of every snapshot and payout, a stats API, and
-a professional marketing website that reads live from it.
+## Stack
 
-## Why "Sherwood," not "Robinhood"
+Exactly three services, as designed:
 
-The mechanic mirrors the Robin Hood story — take from the (trading) rich,
-give to the (holding) poor — but the project deliberately avoids the actual
-"Robinhood" brand name. Using a real brokerage's name/ticker for an
-unaffiliated crypto token would misleadingly imply a partnership and likely
-infringe their trademark. See `docs/DISCLAIMER.md` for the full rationale
-and other legal/risk notes worth reading before you launch this for real.
-
-## Repo layout
+| Piece | Runs on | What it does |
+|---|---|---|
+| `packages/website` | **Vercel** | Next.js site — wallet connect, pick UI, live pot, countdown, leaderboard |
+| `packages/game-worker` | **Railway** | The 15-minute engine: fee claim → settle → payout → next round, plus the game API |
+| `supabase/` | **Supabase** | Postgres ledger of every round, pick, payout, and fee claim (RLS: public read, service-role write) |
 
 ```
 packages/
-  shared/          env config, shared types, RPC helper
-  token-launch/    optional Token-2022 self-launch mint (transfer-fee extension)
-  fee-harvester/   claims pump.fun creator fees + Token-2022 withheld fees, splits them
-  autolp/          deposits the LP-bound share into the Raydium pool
-  snapshot-bot/    the 15-minute cron: snapshot holders -> compute payouts -> airdrop -> persist -> serve /api/stats
-  website/         Next.js + Tailwind marketing site & live dashboard
+  shared/          env config, shared types, the signed pick-message format
+  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap AMM)
+  game-worker/     round engine + payouts + Express API  ← deploy to Railway
+  website/         Next.js + Tailwind game site           ← deploy to Vercel
+supabase/
+  migrations/      schema: rounds, picks, payouts, fee_claims + views
 docs/
-  ARCHITECTURE.md  data-flow diagram + package responsibilities
-  DEPLOYMENT.md    step-by-step devnet -> mainnet guide
-  DISCLAIMER.md    legal / risk / trademark notes — read before launching publicly
+  ARCHITECTURE.md  data flow and design decisions
+  DEPLOYMENT.md    step-by-step: Supabase -> Railway -> Vercel
+  DISCLAIMER.md    legal / risk notes — read before going live
 ```
 
-## Quickstart (devnet)
+## Quickstart (local, devnet)
 
 ```bash
 npm install
-cp .env.example .env          # fill in mint + wallet paths, see docs/DEPLOYMENT.md
-npm run build
-npm run start:bot              # scheduler + stats API
-npm run dev:website             # marketing site, in a separate shell
+cp .env.example .env                     # fill in mint, vault keypair, Supabase creds
+# run supabase/migrations/0001_init.sql in your Supabase SQL editor
+npm run start:worker                     # engine + API on :4000
+npm run dev:website                      # site on :3000, in another shell
 ```
 
-Full walkthrough, including generating wallets and choosing between the
-pump.fun launch path and the self-launch Token-2022 path: **`docs/DEPLOYMENT.md`**.
+Full production walkthrough: **`docs/DEPLOYMENT.md`**.
 
-## How the fee source actually works
+## How the money flows
 
-pump.fun tokens are plain SPL mints — there's no per-transfer tax to hook
-into. The real lever is pump.fun's **creator-fee sharing** program: the
-wallet that creates a coin can claim a share of its trading fees at any
-time via a permissionless `collectCreatorFee` instruction. Sherwood's
-harvester automates that claim (see
-`packages/fee-harvester/src/harvestPumpFunCreatorFees.ts`, built against
-pump.fun's public program docs) rather than pretending pump.fun supports an
-automatic transfer tax it doesn't. Full details in `docs/ARCHITECTURE.md`.
+pump.fun shares trading fees with the wallet that created a coin, claimable
+any time via a permissionless instruction. The game vault **is** that creator
+wallet: fees claim straight into it, the pot is its balance (minus a small
+fee reserve), and winner payouts are plain SOL transfers out of it. One
+wallet, fully auditable on-chain — every claim and payout signature is also
+written to Supabase and shown on the site.
+
+## Fairness
+
+The flip is `sha256(blockhash | round-N)` — first byte even → HODL, odd →
+NO HODL — using a **finalized blockhash fetched at settlement**, a value
+that does not exist when picks lock 30 seconds earlier. Every settled round
+stores its blockhash, so the result is recomputable by anyone.
 
 ## Status
 
-This is a complete, readable reference implementation — not a deployed,
-funded, live token. No mainnet transaction has been made on your behalf.
-Before you launch it for real: read `docs/DISCLAIMER.md`, get independent
-legal advice on the securities-law implications of marketing recurring
-holder payouts, and consider a multisig for the fee/LP/rewards wallets
-instead of single-signer keypairs.
-
-## License
-
-MIT — see the tokenomics/legal notes in `docs/DISCLAIMER.md` for why that
-doesn't mean "risk-free to deploy."
+Complete reference implementation, tested to compile and run — but not a
+deployed, funded, live game until *you* deploy it. Read `docs/DISCLAIMER.md`
+(this is a game of chance funded by memecoin fees — know your local rules)
+before pointing it at mainnet.

@@ -1,5 +1,5 @@
 {
-  "name": "@sherwood/snapshot-bot",
+  "name": "@hodl/game-worker",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -10,18 +10,18 @@
     "dev": "ts-node-dev --respawn src/index.ts"
   },
   "dependencies": {
-    "@sherwood/shared": "^0.1.0",
-    "@sherwood/fee-harvester": "^0.1.0",
-    "@sherwood/autolp": "^0.1.0",
+    "@hodl/fee-harvester": "^0.1.0",
+    "@hodl/shared": "^0.1.0",
     "@solana/spl-token": "^0.4.9",
     "@solana/web3.js": "^1.95.3",
-    "better-sqlite3": "^11.3.0",
+    "@supabase/supabase-js": "^2.45.4",
+    "bs58": "^5.0.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "node-cron": "^3.0.3"
+    "node-cron": "^3.0.3",
+    "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.11",
     "@types/cors": "^2.8.17",
     "@types/express": "^4.17.21",
     "@types/node-cron": "^3.0.11",

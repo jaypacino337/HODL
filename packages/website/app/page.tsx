@@ -1,26 +1,21 @@
-import Navbar from "@/components/Navbar";
-import Hero from "@/components/Hero";
-import LiveStats from "@/components/LiveStats";
-import HowItWorks from "@/components/HowItWorks";
-import Tokenomics from "@/components/Tokenomics";
-import Roadmap from "@/components/Roadmap";
-import FAQ from "@/components/FAQ";
-import Footer from "@/components/Footer";
-import { getStats } from "@/lib/api";
+import { Navbar } from "@/components/Navbar";
+import { Hero } from "@/components/Hero";
+import { GameBoard } from "@/components/GameBoard";
+import { HowItWorks } from "@/components/HowItWorks";
+import { HistoryPanels } from "@/components/HistoryPanels";
+import { FAQ } from "@/components/FAQ";
+import { Footer } from "@/components/Footer";
 
-export const revalidate = 30;
-
-export default async function Home() {
-  const { stats, live } = await getStats();
-
+export default function Home() {
   return (
     <main>
       <Navbar />
       <Hero />
-      <LiveStats initial={stats} initiallyLive={live} />
+      <section id="play" className="mx-auto max-w-5xl px-4 pb-20">
+        <GameBoard />
+      </section>
       <HowItWorks />
-      <Tokenomics />
-      <Roadmap />
+      <HistoryPanels />
       <FAQ />
       <Footer />
     </main>

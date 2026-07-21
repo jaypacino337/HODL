@@ -1,60 +1,78 @@
-export interface SnapshotSummary {
-  id: number;
-  takenAt: string;
-  holderCount: number;
-  totalEligibleSupply: string;
-  rewardsPoolLamports: string;
+import { API_URL } from "./config";
+
+export type Side = "HODL" | "NOHODL";
+
+export interface SideTotals {
+  players: number;
+  weight: string;
 }
 
-export interface StatsResponse {
+export interface RoundSummary {
+  roundNumber: number;
+  winningSide: Side | null;
+  decisionBlockhash: string | null;
+  potLamports: string;
+  settledAt: string | null;
+  winnersPaid: number;
+  paidLamports: string;
+}
+
+export interface GameState {
   mint: string;
-  lastSnapshot: SnapshotSummary | null;
-  nextSnapshotAt: string | null;
-  totalDistributedLamports: string;
-  totalHarvestedLamports: string;
-  holderCount: number;
+  tokenDecimals: number;
+  minHoldTokens: number;
+  potLamports: string;
+  round: { roundNumber: number; locksAt: string; settlesAt: string } | null;
+  totals: Record<Side, SideTotals>;
+  lastRound: RoundSummary | null;
 }
 
-const API_BASE = process.env.NEXT_PUBLIC_BOT_API_URL ?? "http://localhost:4000";
+export interface LeaderboardEntry {
+  wallet: string;
+  totalWonLamports: string;
+  wins: number;
+}
 
-// Shown until the live bot API is reachable, so the page always looks complete in a fresh checkout / preview deploy.
-export const FALLBACK_STATS: StatsResponse = {
-  mint: "Not deployed yet",
-  lastSnapshot: {
-    id: 0,
-    takenAt: new Date().toISOString(),
-    holderCount: 0,
-    totalEligibleSupply: "0",
-    rewardsPoolLamports: "0",
-  },
-  nextSnapshotAt: new Date(Date.now() + 15 * 60 * 1000).toISOString(),
-  totalDistributedLamports: "0",
-  totalHarvestedLamports: "0",
-  holderCount: 0,
+export interface History {
+  rounds: RoundSummary[];
+  leaderboard: LeaderboardEntry[];
+  totalClaimedLamports: string;
+  totalPaidLamports: string;
+}
+
+async function getJson<T>(path: string): Promise<T> {
+  const res = await fetch(`${API_URL}${path}`, { cache: "no-store" });
+  if (!res.ok) throw new Error(`${path} -> ${res.status}`);
+  return res.json();
+}
+
+export const fetchGameState = () => getJson<GameState>("/api/state");
+export const fetchHistory = () => getJson<History>("/api/history");
+
+export const fetchMyPick = async (roundNumber: number, wallet: string) => {
+  const res = await getJson<{ pick: { side: Side; pickedAt: string } | null }>(
+    `/api/pick/${roundNumber}/${wallet}`
+  );
+  return res.pick;
 };
 
-export async function getStats(): Promise<{ stats: StatsResponse; live: boolean }> {
-  try {
-    const res = await fetch(`${API_BASE}/api/stats`, { next: { revalidate: 30 } });
-    if (!res.ok) throw new Error(`status ${res.status}`);
-    const stats = (await res.json()) as StatsResponse;
-    return { stats, live: true };
-  } catch {
-    return { stats: FALLBACK_STATS, live: false };
-  }
-}
-
-export function lamportsToSol(lamports: string | number): number {
-  return Number(lamports) / 1_000_000_000;
-}
-
-export function formatSol(lamports: string | number, digits = 3): string {
-  return lamportsToSol(lamports).toLocaleString(undefined, {
-    minimumFractionDigits: digits,
-    maximumFractionDigits: digits,
+export async function submitPick(body: {
+  wallet: string;
+  side: Side;
+  roundNumber: number;
+  signature: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  const res = await fetch(`${API_URL}/api/pick`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
   });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) return { ok: false, error: json.error ?? `request failed (${res.status})` };
+  return { ok: true };
 }
 
-export function formatCompact(n: number): string {
-  return new Intl.NumberFormat(undefined, { notation: "compact", maximumFractionDigits: 1 }).format(n);
+/** Must stay byte-identical to pickMessage() in @hodl/shared. */
+export function pickMessage(roundNumber: number, side: Side, wallet: string): string {
+  return `HODL OR NO HODL | round ${roundNumber} | pick ${side} | wallet ${wallet}`;
 }

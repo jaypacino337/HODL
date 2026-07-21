@@ -1,5 +1,6 @@
 /**
- * Claims Sherwood's pump.fun creator rewards.
+ * Claims the game's pump.fun creator rewards — the fee stream that funds
+ * every HODL OR NO HODL round.
  *
  * pump.fun mints plain SPL tokens on a bonding curve — there is no
  * per-transfer tax to intercept. Instead, pump.fun accrues a share of
@@ -20,11 +21,11 @@
  * Anchor discriminators, since those packages track pump.fun's on-chain
  * program as it evolves. Pin exact function names against whatever SDK
  * version you install (`npm ls @pump-fun/pump-sdk`) — pump.fun has shipped
- * breaking instruction changes before (see docs/BREAKING_FEE_RECIPIENT.md
- * and the collect_creator_fee -> collect_creator_fee_v2 migration).
+ * breaking instruction changes before (the collect_creator_fee ->
+ * collect_creator_fee_v2 migration, for one).
  */
 import { Connection, Keypair, PublicKey, sendAndConfirmTransaction, Transaction } from "@solana/web3.js";
-import type { HarvestResult } from "@sherwood/shared";
+import type { HarvestResult } from "@hodl/shared";
 
 export const PUMP_PROGRAM_ID = new PublicKey("6EF8rrecthR5Dkzon8Nwu78hRvfCKubJ14M5uBEwF6P");
 export const PUMP_SWAP_PROGRAM_ID = new PublicKey("pAMMBay6oceH9fJKBRHGP5D4bD4sWpmSwMn52FMfXEA");
@@ -48,7 +49,8 @@ export function deriveAmmCreatorVault(coinCreator: PublicKey): PublicKey {
 /**
  * Claims accrued creator fees from both the bonding-curve vault (pre-graduation)
  * and the AMM vault (post-graduation). Either leg is a no-op if its vault is
- * empty or the coin hasn't reached that phase yet.
+ * empty or the coin hasn't reached that phase yet. Fees land as SOL in the
+ * creator wallet — which for this game IS the vault the pot is paid from.
  */
 export async function harvestPumpFunCreatorFees(
   connection: Connection,

@@ -1,33 +1,37 @@
-export default function Navbar() {
-  const links = [
-    { href: "#how-it-works", label: "How it works" },
-    { href: "#tokenomics", label: "Tokenomics" },
-    { href: "#stats", label: "Live stats" },
-    { href: "#roadmap", label: "Roadmap" },
-    { href: "#faq", label: "FAQ" },
-  ];
+"use client";
 
+import Image from "next/image";
+import dynamic from "next/dynamic";
+
+// The wallet button renders differently server vs client — load client-only.
+const WalletMultiButton = dynamic(
+  () => import("@solana/wallet-adapter-react-ui").then((m) => m.WalletMultiButton),
+  { ssr: false }
+);
+
+export function Navbar() {
   return (
-    <header className="sticky top-0 z-50 border-b border-white/5 bg-[#06110c]/80 backdrop-blur-md">
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-6 py-4">
-        <a href="#top" className="flex items-center gap-2 font-display text-lg font-semibold">
-          <span aria-hidden>🏹</span>
-          Sherwood <span className="text-sherwood-400">Protocol</span>
+    <nav className="sticky top-0 z-40 border-b border-ember-700/30 bg-stage-950/85 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <a href="#" className="flex items-center gap-3">
+          <Image src="/logo.png" alt="HODL OR NO HODL" width={44} height={44} className="rounded-lg" />
+          <span className="font-display text-xl tracking-wide text-gold-metal hidden sm:block">
+            HODL OR NO HODL
+          </span>
         </a>
-        <div className="hidden items-center gap-8 text-sm text-white/70 md:flex">
-          {links.map((l) => (
-            <a key={l.href} href={l.href} className="transition hover:text-white">
-              {l.label}
-            </a>
-          ))}
+        <div className="flex items-center gap-4">
+          <a href="#play" className="text-sm font-semibold text-gold-300 hover:text-gold-200">
+            Play
+          </a>
+          <a href="#how" className="text-sm font-semibold text-gold-300 hover:text-gold-200 hidden sm:block">
+            How it works
+          </a>
+          <a href="#history" className="text-sm font-semibold text-gold-300 hover:text-gold-200 hidden sm:block">
+            Rounds
+          </a>
+          <WalletMultiButton />
         </div>
-        <a
-          href="#buy"
-          className="rounded-full bg-gradient-to-r from-gold-500 to-sherwood-400 px-4 py-2 text-sm font-semibold text-[#06110c] transition hover:opacity-90"
-        >
-          Buy $ARROW
-        </a>
-      </nav>
-    </header>
+      </div>
+    </nav>
   );
 }
