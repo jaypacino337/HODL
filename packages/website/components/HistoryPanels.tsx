@@ -19,12 +19,12 @@ export function HistoryPanels() {
       <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
         {/* ── recent rounds ── */}
         <div className="panel p-6">
-          <h3 className="font-display text-2xl uppercase tracking-wide text-gold-metal">
+          <h3 className="anton gold-text text-2xl">
             Recent flips
           </h3>
           <div className="mt-4 overflow-x-auto">
             <table className="w-full text-left text-sm">
-              <thead className="text-xs uppercase tracking-wider text-amber-100/50">
+              <thead className="text-xs uppercase tracking-wider text-smoked">
                 <tr>
                   <th className="py-2 pr-4">Round</th>
                   <th className="py-2 pr-4">Result</th>
@@ -36,7 +36,7 @@ export function HistoryPanels() {
               <tbody>
                 {(history?.rounds ?? []).map((r) => (
                   <tr key={r.roundNumber} className="border-t border-ember-700/20">
-                    <td className="py-2.5 pr-4 font-semibold text-amber-50">#{r.roundNumber}</td>
+                    <td className="py-2.5 pr-4 font-semibold text-cream">#{r.roundNumber}</td>
                     <td className="py-2.5 pr-4">
                       <span
                         className={`rounded-full px-2.5 py-0.5 text-xs font-bold ${
@@ -49,14 +49,14 @@ export function HistoryPanels() {
                         {r.winningSide === "HODL" ? "HODL" : "NO HODL"}
                       </span>
                     </td>
-                    <td className="py-2.5 pr-4 text-amber-100/80">{formatSol(r.potLamports)} SOL</td>
-                    <td className="py-2.5 pr-4 text-amber-100/80">{r.winnersPaid}</td>
-                    <td className="py-2.5 text-amber-100/80">{formatSol(r.paidLamports)} SOL</td>
+                    <td className="py-2.5 pr-4 text-smoked">{formatSol(r.potLamports)} SOL</td>
+                    <td className="py-2.5 pr-4 text-smoked">{r.winnersPaid}</td>
+                    <td className="py-2.5 text-smoked">{formatSol(r.paidLamports)} SOL</td>
                   </tr>
                 ))}
                 {(!history || history.rounds.length === 0) && (
                   <tr>
-                    <td colSpan={5} className="py-6 text-center text-amber-100/50">
+                    <td colSpan={5} className="py-6 text-center text-smoked">
                       No rounds settled yet — the first flip is coming up.
                     </td>
                   </tr>
@@ -68,7 +68,7 @@ export function HistoryPanels() {
 
         {/* ── leaderboard ── */}
         <div className="panel p-6">
-          <h3 className="font-display text-2xl uppercase tracking-wide text-gold-metal">
+          <h3 className="anton gold-text text-2xl">
             Biggest winners
           </h3>
           <div className="mt-4">
@@ -78,9 +78,9 @@ export function HistoryPanels() {
                 className="flex items-center justify-between border-t border-ember-700/20 py-2.5 text-sm first:border-t-0"
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-6 text-right font-display text-lg text-ember-500">{i + 1}</span>
-                  <span className="font-mono text-amber-100/90">{shortAddress(e.wallet, 5)}</span>
-                  <span className="text-xs text-amber-100/50">
+                  <span className="w-6 text-right anton red-text text-lg">{i + 1}</span>
+                  <span className="font-mono text-cream/90">{shortAddress(e.wallet, 5)}</span>
+                  <span className="text-xs text-smoked">
                     {e.wins} win{e.wins === 1 ? "" : "s"}
                   </span>
                 </div>
@@ -88,13 +88,13 @@ export function HistoryPanels() {
               </div>
             ))}
             {(!history || history.leaderboard.length === 0) && (
-              <div className="py-6 text-center text-sm text-amber-100/50">
+              <div className="py-6 text-center text-sm text-smoked">
                 Nobody's cashed out yet. Be the first name up here.
               </div>
             )}
           </div>
           {history && (
-            <div className="mt-4 border-t border-ember-700/20 pt-4 text-center text-xs text-amber-100/60">
+            <div className="mt-4 border-t border-ember-700/20 pt-4 text-center text-xs text-smoked">
               Lifetime: {formatSol(history.totalClaimedLamports)} SOL claimed in fees ·{" "}
               {formatSol(history.totalPaidLamports)} SOL paid to players
             </div>

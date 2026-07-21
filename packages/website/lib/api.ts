@@ -33,11 +33,26 @@ export interface LeaderboardEntry {
   wins: number;
 }
 
+export interface FeeClaim {
+  claimedAt: string;
+  lamports: string;
+  txSignature: string;
+}
+
 export interface History {
   rounds: RoundSummary[];
   leaderboard: LeaderboardEntry[];
+  claims: FeeClaim[];
   totalClaimedLamports: string;
   totalPaidLamports: string;
+}
+
+export interface PlayerStats {
+  wallet: string;
+  wins: number;
+  totalWonLamports: string;
+  playStreak: number;
+  currentPick: Side | null;
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -48,6 +63,7 @@ async function getJson<T>(path: string): Promise<T> {
 
 export const fetchGameState = () => getJson<GameState>("/api/state");
 export const fetchHistory = () => getJson<History>("/api/history");
+export const fetchPlayerStats = (wallet: string) => getJson<PlayerStats>(`/api/player/${wallet}`);
 
 export const fetchMyPick = async (roundNumber: number, wallet: string) => {
   const res = await getJson<{ pick: { side: Side; pickedAt: string } | null }>(

@@ -41,7 +41,7 @@ export interface HodlConfig {
   roundIntervalMs: number;
   /** Picks lock this many ms before settlement so late entries can't game the flip. */
   pickLockBufferMs: number;
-  /** Minimum whole-token balance required to play. Default: 500,000. */
+  /** Minimum whole-token balance required to play. Default: 1,000,000. */
   minHoldTokens: number;
   /** SOL (in lamports) always left in the vault to cover future tx fees. */
   vaultReserveLamports: number;
@@ -61,7 +61,7 @@ export function loadConfig(): HodlConfig {
   const gameVaultKeypair = loadKeypair(requireEnv("GAME_VAULT_KEYPAIR"));
   const roundIntervalMs = Number(optionalEnv("ROUND_INTERVAL_MS", String(15 * 60 * 1000)));
   const pickLockBufferMs = Number(optionalEnv("PICK_LOCK_BUFFER_MS", String(30 * 1000)));
-  const minHoldTokens = Number(optionalEnv("MIN_HOLD_TOKENS", "500000"));
+  const minHoldTokens = Number(optionalEnv("MIN_HOLD_TOKENS", "1000000"));
   const vaultReserveLamports = Number(optionalEnv("VAULT_RESERVE_LAMPORTS", String(0.02 * 1e9)));
   const excludedOwners = new Set(
     optionalEnv("EXCLUDED_OWNERS", "")

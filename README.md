@@ -6,7 +6,7 @@ This is the full working implementation of [hodlornohodl.fun](https://www.hodlor
 a Solana game where the token *plays itself*:
 
 1. **CLAIM** — every 15 minutes the game claims the coin's pump.fun **creator fees** into the game vault. Trading volume is the prize pool; nobody deposits anything.
-2. **QUALIFY** — anyone holding **500,000+ tokens** can play each round, free. A pick is a signed message: no transaction, no gas.
+2. **QUALIFY** — anyone holding **1,000,000+ tokens** can play each round, free. A pick is a signed message: no transaction, no gas.
 3. **PICK** — choose your case: **HODL** or **NO HODL**. Switch any time until the round locks (30s before the flip).
 4. **FLIP** — at the buzzer a fresh finalized Solana blockhash decides the winning side. The blockhash is stored with the round so anyone can recompute the result.
 5. **PAY** — winners split the entire pot **pro-rata by how much they hold** (your bag is your score), paid instantly in SOL. If nobody picked the winning side, the pot rolls over and grows.

@@ -35,7 +35,7 @@ Every `ROUND_INTERVAL_MS` (default 15 min) the worker runs one tick:
    - Pot = vault balance − `VAULT_RESERVE_LAMPORTS` (rollover included).
    - Fetch a **finalized blockhash**; `sha256(blockhash | round-N)[0]`
      even → HODL, odd → NO HODL. Stored on the round row for public audit.
-   - Re-fetch each picker's live token balance. Below the 500K threshold →
+   - Re-fetch each picker's live token balance. Below the 1M threshold →
      pick voided. Otherwise the balance is the player's **weight**.
    - Winners = pickers on the winning side; each gets
      `pot × weight / totalWinnerWeight`, sent as batched SOL transfers

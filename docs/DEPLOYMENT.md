@@ -59,7 +59,7 @@ Deploy in this order; each step feeds the next its config.
 3. With a wallet holding ≥ `MIN_HOLD_TOKENS`: pick a side → wallet prompts
    for a **message signature** (not a transaction) → "Locked in" appears,
    and the row shows up in Supabase → `picks`.
-4. With a small wallet: pick is rejected with the 500K message.
+4. With a small wallet: pick is rejected with the 1M message.
 5. After the flip: round appears in "Recent flips", payout SOL arrives,
    `payouts` row has the tx signature.
 

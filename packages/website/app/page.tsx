@@ -1,6 +1,6 @@
 import { Navbar } from "@/components/Navbar";
-import { Hero } from "@/components/Hero";
-import { GameBoard } from "@/components/GameBoard";
+import { HeroBanner } from "@/components/HeroBanner";
+import { StageGame } from "@/components/StageGame";
 import { HowItWorks } from "@/components/HowItWorks";
 import { HistoryPanels } from "@/components/HistoryPanels";
 import { FAQ } from "@/components/FAQ";
@@ -10,9 +10,9 @@ export default function Home() {
   return (
     <main>
       <Navbar />
-      <Hero />
-      <section id="play" className="mx-auto max-w-5xl px-4 pb-20">
-        <GameBoard />
+      <HeroBanner />
+      <section id="play" className="mx-auto max-w-6xl scroll-mt-24 px-4 pb-20">
+        <StageGame />
       </section>
       <HowItWorks />
       <HistoryPanels />

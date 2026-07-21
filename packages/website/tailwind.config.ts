@@ -1,51 +1,41 @@
 import type { Config } from "tailwindcss";
 
+// Palette lifted from the approved game mockup (hodlornohodlgamemockup.html).
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
         stage: {
-          950: "#0a0203",
-          900: "#140406",
-          800: "#22070a",
-          700: "#38090e",
+          950: "#0B0407",
+          900: "#160709",
+          800: "#1D0A0D",
+          700: "#2A0E11",
         },
         ember: {
-          400: "#ff6a3d",
-          500: "#ff3d1f",
-          600: "#e02412",
-          700: "#b3160c",
+          400: "#FF6A55",
+          500: "#FF3B30",
+          600: "#C40E12",
+          700: "#8E060B",
         },
         gold: {
-          200: "#ffe9a8",
-          300: "#ffd968",
-          400: "#f6b93b",
-          500: "#e8a020",
-          600: "#c07f12",
+          200: "#FFE9A8",
+          300: "#FFD98A",
+          400: "#F6C14A",
+          500: "#D4A017",
+          600: "#B8860B",
         },
+        cream: "#FFF6E6",
+        smoked: "#C9A8A0",
+        good: "#57E389",
       },
       fontFamily: {
         display: ["Anton", "Impact", "'Arial Narrow Bold'", "sans-serif"],
-        body: ["'Inter'", "system-ui", "sans-serif"],
+        body: ["'Barlow Semi Condensed'", "system-ui", "sans-serif"],
       },
       boxShadow: {
-        "glow-gold": "0 0 25px rgba(246,185,59,0.45), 0 0 60px rgba(246,185,59,0.15)",
-        "glow-red": "0 0 25px rgba(255,61,31,0.5), 0 0 60px rgba(224,36,18,0.2)",
-      },
-      backgroundImage: {
-        "stage-spotlight":
-          "radial-gradient(ellipse at 50% -10%, rgba(255,61,31,0.28), transparent 55%), radial-gradient(ellipse at 15% 110%, rgba(246,185,59,0.12), transparent 50%), radial-gradient(ellipse at 85% 110%, rgba(224,36,18,0.14), transparent 50%)",
-        "gold-metal": "linear-gradient(180deg, #ffe9a8 0%, #f6b93b 45%, #c07f12 55%, #f6b93b 100%)",
-      },
-      keyframes: {
-        shimmer: {
-          "0%, 100%": { opacity: "1" },
-          "50%": { opacity: "0.55" },
-        },
-      },
-      animation: {
-        shimmer: "shimmer 2.4s ease-in-out infinite",
+        "glow-gold": "0 0 22px rgba(246,193,74,0.4)",
+        "glow-red": "0 0 22px rgba(255,45,40,0.55)",
       },
     },
   },

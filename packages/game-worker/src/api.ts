@@ -1,7 +1,14 @@
 import express, { Express } from "express";
 import cors from "cors";
 import { Connection, PublicKey } from "@solana/web3.js";
-import { GameStateResponse, HistoryResponse, HodlConfig, Side, SideTotals } from "@hodl/shared";
+import {
+  GameStateResponse,
+  HistoryResponse,
+  HodlConfig,
+  PlayerStatsResponse,
+  Side,
+  SideTotals,
+} from "@hodl/shared";
 import { GameDb } from "./db";
 import { getWalletTokenBalance, minHoldRaw } from "./balances";
 import { verifyPickSignature } from "./verify";
@@ -78,15 +85,38 @@ export function buildApi(
 
   app.get("/api/history", async (_req, res) => {
     try {
-      const [rounds, leaderboard, totals] = await Promise.all([
+      const [rounds, leaderboard, claims, totals] = await Promise.all([
         db.getRoundSummaries(20),
         db.getLeaderboard(25),
+        db.getRecentFeeClaims(10),
         db.getGameTotals(),
       ]);
-      const body: HistoryResponse = { rounds, leaderboard, ...totals };
+      const body: HistoryResponse = { rounds, leaderboard, claims, ...totals };
       res.json(body);
     } catch (err) {
       console.error("[api] /api/history failed:", (err as Error).message);
+      res.status(500).json({ error: "internal error" });
+    }
+  });
+
+  app.get("/api/player/:wallet", async (req, res) => {
+    try {
+      const wallet = req.params.wallet;
+      try {
+        new PublicKey(wallet);
+      } catch {
+        return res.status(400).json({ error: "invalid wallet address" });
+      }
+      const [stats, round] = await Promise.all([db.getPlayerStats(wallet), db.getOpenRound()]);
+      const pick = round ? await db.getPick(round.id, wallet) : null;
+      const body: PlayerStatsResponse = {
+        wallet,
+        ...stats,
+        currentPick: pick?.side ?? null,
+      };
+      res.json(body);
+    } catch (err) {
+      console.error("[api] /api/player failed:", (err as Error).message);
       res.status(500).json({ error: "internal error" });
     }
   });

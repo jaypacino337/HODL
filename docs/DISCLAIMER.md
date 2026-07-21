@@ -9,7 +9,7 @@ Non-exhaustive things to think about first:
 Players stake nothing directly, but they receive randomized SOL payouts
 gated by holding a speculative asset. In many jurisdictions that can fall
 under gambling, sweepstakes, or lottery rules — and "the pot came from
-trading fees" is not automatically a defense. The 500K-token gate makes
+trading fees" is not automatically a defense. The 1M-token gate makes
 eligibility *purchasable*, which regulators may read as consideration.
 Get actual legal advice for the jurisdictions you expect players from,
 and geo-block where you have to.

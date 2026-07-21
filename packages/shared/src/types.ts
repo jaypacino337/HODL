@@ -75,8 +75,20 @@ export interface LeaderboardEntry {
 export interface HistoryResponse {
   rounds: RoundSummary[];
   leaderboard: LeaderboardEntry[];
+  /** Most recent creator-fee claims, newest first — feeds the studio feed. */
+  claims: Array<Pick<FeeClaimRecord, "claimedAt" | "lamports" | "txSignature">>;
   totalClaimedLamports: string;
   totalPaidLamports: string;
+}
+
+/** Per-wallet stats for the "Your Box" contestant panel. */
+export interface PlayerStatsResponse {
+  wallet: string;
+  wins: number;
+  totalWonLamports: string;
+  /** Consecutive recent rounds (newest first) this wallet made a pick in. */
+  playStreak: number;
+  currentPick: Side | null;
 }
 
 export interface HolderBalance {

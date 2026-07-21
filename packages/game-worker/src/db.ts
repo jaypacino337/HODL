@@ -193,6 +193,64 @@ export class GameDb {
     }));
   }
 
+  async getRecentFeeClaims(
+    limit = 10
+  ): Promise<Array<{ claimedAt: string; lamports: string; txSignature: string }>> {
+    const { data, error } = await this.sb
+      .from("fee_claims")
+      .select("claimed_at, lamports, tx_signature")
+      .order("claimed_at", { ascending: false })
+      .limit(limit);
+    if (error) throw new Error(`getRecentFeeClaims: ${error.message}`);
+    return (data ?? []).map((row) => ({
+      claimedAt: row.claimed_at,
+      lamports: String(row.lamports),
+      txSignature: row.tx_signature,
+    }));
+  }
+
+  /**
+   * Wins + total won from payouts, plus the wallet's "play streak": how many
+   * consecutive recent rounds (newest first, skipping the still-open one)
+   * it made a pick in.
+   */
+  async getPlayerStats(wallet: string): Promise<{ wins: number; totalWonLamports: string; playStreak: number }> {
+    const { data: payoutRows, error: payoutErr } = await this.sb
+      .from("payouts")
+      .select("amount_lamports")
+      .eq("wallet", wallet)
+      .eq("status", "sent");
+    if (payoutErr) throw new Error(`getPlayerStats payouts: ${payoutErr.message}`);
+    const wins = (payoutRows ?? []).length;
+    const totalWon = (payoutRows ?? []).reduce((sum, r) => sum + BigInt(String(r.amount_lamports).split(".")[0]), 0n);
+
+    const { data: roundRows, error: roundErr } = await this.sb
+      .from("rounds")
+      .select("id, status")
+      .order("round_number", { ascending: false })
+      .limit(50);
+    if (roundErr) throw new Error(`getPlayerStats rounds: ${roundErr.message}`);
+    const settled = (roundRows ?? []).filter((r) => r.status === "settled");
+    const ids = settled.map((r) => Number(r.id));
+
+    let playStreak = 0;
+    if (ids.length > 0) {
+      const { data: pickRows, error: pickErr } = await this.sb
+        .from("picks")
+        .select("round_id")
+        .eq("wallet", wallet)
+        .in("round_id", ids);
+      if (pickErr) throw new Error(`getPlayerStats picks: ${pickErr.message}`);
+      const picked = new Set((pickRows ?? []).map((r) => Number(r.round_id)));
+      for (const id of ids) {
+        if (picked.has(id)) playStreak++;
+        else break;
+      }
+    }
+
+    return { wins, totalWonLamports: totalWon.toString(), playStreak };
+  }
+
   async getGameTotals(): Promise<{ totalClaimedLamports: string; totalPaidLamports: string }> {
     const { data, error } = await this.sb.from("game_totals").select("*").single();
     if (error) throw new Error(`getGameTotals: ${error.message}`);
