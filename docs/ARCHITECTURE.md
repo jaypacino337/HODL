@@ -1,95 +1,108 @@
-# Architecture
+# OVERBID — Architecture
+
+## System at a glance
 
 ```
-                     ┌─────────────────────────────────────────────┐
-                     │                 SOLANA                      │
-                     │  pump.fun creator-fee vaults   game vault   │
-                     │  (bonding curve + PumpSwap)    (SOL pot)    │
-                     └────────▲───────────────▲──────────┬─────────┘
-                              │ claim (15min) │ balances │ payouts
-                              │               │          ▼
-┌──────────────┐   HTTPS   ┌──┴───────────────┴─────────────────────┐
-│   WEBSITE    │──────────▶│              GAME-WORKER               │
-│   (Vercel)   │  /api/*   │              (Railway)                 │
-│              │           │  cron: claim → settle → open round     │
-│ wallet sign  │           │  API: state / history / pick           │
-└──────────────┘           └──────────────────┬─────────────────────┘
-                                              │ service-role writes
-                                              ▼
-                           ┌────────────────────────────────────────┐
-                           │           SUPABASE (Postgres)          │
-                           │ rounds · picks · payouts · fee_claims  │
-                           │ views: round_summaries · leaderboard   │
-                           └────────────────────────────────────────┘
+                        ┌───────────────────────────┐
+                        │   packages/website        │  Vercel
+                        │   Next.js · launch board  │
+                        │   demo AMM = shared math  │
+                        └─────┬──────────────┬──────┘
+                 read API     │              │ (live mode, later)
+                              ▼              ▼
+        ┌──────────────────────────┐   ┌────────────────────────────┐
+        │ packages/oracle-worker   │   │ packages/contracts         │
+        │ Railway · Express API    │   │ Robinhood Chain (Orbit L2) │
+        │ Parcl Labs poller        │   │ HousePool · MarketFactory  │
+        │ settlement computation   │──▶│ OverbidMarket · IndexOracle│
+        └───────────┬──────────────┘   └────────────────────────────┘
+                    ▼
+        ┌──────────────────────────┐
+        │ supabase/ (Postgres)     │
+        │ feeds · observations ·   │
+        │ markets · settlements    │
+        └──────────────────────────┘
 ```
 
-## The 15-minute cycle (`game-worker/src/engine.ts`)
+One shared source of truth — `packages/shared` — holds the market
+definitions, the AMM math, and the fee constants. The website's paper-trading
+demo, the worker's settlement engine, and the Solidity contracts all
+implement/consume the same definitions, so demo behavior is contract behavior.
 
-Every `ROUND_INTERVAL_MS` (default 15 min) the worker runs one tick:
+## The market maker
 
-1. **CLAIM** — `harvestPumpFunCreatorFees()` checks both creator-fee vaults
-   (bonding-curve PDA pre-graduation, PumpSwap PDA post-graduation) and
-   claims anything accrued. Fees land as SOL in the game vault, which is the
-   coin's creator wallet. Each claim is logged to `fee_claims`.
-2. **SETTLE** — for the round whose `settles_at` has passed:
-   - Pot = vault balance − `VAULT_RESERVE_LAMPORTS` (rollover included).
-   - Fetch a **finalized blockhash**; `sha256(blockhash | round-N)[0]`
-     even → HODL, odd → NO HODL. Stored on the round row for public audit.
-   - Re-fetch each picker's live token balance. Below the 1M threshold →
-     pick voided. Otherwise the balance is the player's **weight**.
-   - Winners = pickers on the winning side; each gets
-     `pot × weight / totalWinnerWeight`, sent as batched SOL transfers
-     (10 per tx). Results land in `payouts` with tx signatures.
-   - No winners → nothing sent; the pot stays in the vault and rolls over.
-3. **OPEN** — insert the next round (`locks_at` = `settles_at` − 30s).
+Markets use an **n-outcome fixed-product AMM** (Gnosis FPMM — the design
+early Polymarket markets ran on):
 
-A 30-second watchdog also settles overdue rounds after restarts, so a
-Railway redeploy mid-round never wedges the game.
+- Invariant: `∏ pools[i] = k` over the AMM's per-outcome share inventory.
+- Buying outcome *i* with `a` USDG (post-fee) mints a **complete set** —
+  1 share of *every* outcome per USDG, fully collateralized — adds it to all
+  pools, then pays out outcome-*i* shares to restore the invariant.
+- Implied probability of outcome *i* is proportional to `1 / pools[i]`; a 29¢
+  price *is* a 29% implied probability, and one winning share always redeems
+  1 USDG.
 
-## Picks are signed messages, not transactions
+Why FPMM over LMSR or an order book: no `exp/ln` fixed-point math on-chain,
+liquidity is a first-class deposit (complete sets), and n-outcome support is
+native — a five-city race is the flagship product.
 
-The website asks the connected wallet to `signMessage()` the canonical
-string from `@hodl/shared`'s `pickMessage()`:
+`packages/shared/src/amm.ts` is the reference implementation (the website
+runs it in the browser); `packages/contracts/src/OverbidMarket.sol` mirrors
+it with the same iterative ceil-div formulation Gnosis used to avoid
+overflow.
 
-```
-HODL OR NO HODL | round 42 | pick HODL | wallet <base58>
-```
+## Settlement
 
-`POST /api/pick` re-derives that exact string and verifies the ed25519
-signature against the claimed pubkey (tweetnacl), so nobody can pick on
-behalf of a wallet they don't control. The worker then checks the wallet's
-live token balance against `MIN_HOLD_TOKENS` before accepting. Picks
-upsert — players can flip sides freely until `locks_at`.
+Every market's rule is fixed at creation and machine-checkable:
 
-Playing is therefore free (no gas), can't move funds, and requires no
-approvals — the only on-chain movement is the worker paying winners.
-
-## Why the flip can't be gamed
-
-- Players can't game it: picks lock 30s before settlement, and the deciding
-  blockhash doesn't exist yet at lock time.
-- The operator *could* delay settlement fishing for a favorable hash —
-  which is why the blockhash is stored and the settle time is public; any
-  tampering is visible as a late settle. For stronger guarantees, swap in a
-  VRF (e.g. Switchboard) — the seam is `decideWinningSide()`, one function.
-
-## Data model (Supabase)
-
-| Table | Purpose |
+| Rule | Meaning |
 |---|---|
-| `rounds` | one row per round: timing, status, pot, winning side, decision blockhash |
-| `picks` | PK `(round_id, wallet)`: side, balance at pick, signature |
-| `payouts` | winner, weight, amount, payout tx signature, sent/failed |
-| `fee_claims` | every creator-fee claim with tx signature |
+| `max-gain` | one index feed per outcome; largest % change over the window wins (falling less counts) |
+| `positive` | binary; YES iff the metric change > 0 |
+| `threshold` | binary; YES iff the metric change ≥ `thresholdPct` |
 
-Views `round_summaries`, `leaderboard`, `game_totals` pre-aggregate what
-the API serves. RLS: everything world-readable; only the worker's
-service-role key writes. Token amounts are `numeric` (SPL u64 can overflow
-signed bigint).
+The oracle worker pulls Parcl Labs price feeds on a schedule, stores every
+observation in Postgres, and when a market's window has elapsed computes the
+winner from the **stored series** (anchor = last observation at or before the
+window boundary). On-chain, the same values are posted to `IndexOracle` so a
+resolution is auditable against the posted series.
 
-## Trust model
+**Oracle trust model (v1):** allow-listed poster, everything on the record.
+Decentralizing it — multiple posters, dispute window — is the roadmap step
+after launch. This is a deliberate v1 trade: transparent-but-trusted beats
+pretend-decentralized.
 
-Custodial by design for v1: the creator wallet is the vault and the worker
-signs payouts. Every fee claim and payout is an on-chain signature recorded
-in Supabase and rendered on the site, so operators can be audited. The
-serverless-free worker (one Railway service) keeps ops surface minimal.
+**Data coverage:** Parcl Labs covers US markets, which is why v1 is US-only
+(Miami, New York, Austin, Phoenix, Chicago, national aggregate). A non-US
+city (Toronto first) requires a licensed local index provider wired in as a
+second adapter behind the same `Feed` interface — a market is only listable
+if its feed is servable.
+
+## Contracts
+
+- **`OverbidMarket`** — one market: pools, buy/sell with slippage guards,
+  2% fee accrual, oracle-only `resolve`, 1:1 `redeem`, and
+  `sweepResidualToPool` returning leftover inventory to the House Pool.
+- **`HousePool`** — minimal ERC-4626-style vault (`ovLP`). Tracks
+  `deployedAssets` so seed capital stays part of `totalAssets` while a market
+  is live. Fees and residuals arrive as plain transfers → share price rises.
+- **`MarketFactory`** — the only market creator. Templates (settlement rule +
+  data-source requirement) are approved by governance; `createProtocolMarket`
+  draws seed from the pool and names the pool as creator;
+  `createMarket` lets anyone launch from a template with their own seed.
+- **`IndexOracle`** — on-chain observation ledger + market resolution.
+
+## Website
+
+Next.js 14 App Router, Tailwind, zero required env vars. The demo store
+(`lib/store.ts`) keeps 10,000 paper USDG, live FPMM state per market, and a
+demo LP position in `localStorage`; server and first client render use the
+pristine seeded state so hydration is deterministic. `NEXT_PUBLIC_API_URL`
+switches data reads to the oracle worker; wallet + on-chain trading arrive
+with the Robinhood Chain deployment.
+
+## Why this stack
+
+Same three-service shape that shipped before (Vercel + Railway + Supabase):
+cheap, boring, debuggable. Everything stateful is Postgres; everything
+user-facing is static-friendly; the only always-on process is the worker.

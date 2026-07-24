@@ -1,82 +1,77 @@
-# Deployment — Supabase → Railway → Vercel
+# OVERBID — Deployment
 
-Deploy in this order; each step feeds the next its config.
+Three services + contracts. Ship them in this order; each step works without
+the ones after it.
 
-## 0. Prerequisites
+## 1 · Website → Vercel (works with zero config)
 
-- The coin exists on pump.fun and you control the **creator wallet's**
-  keypair JSON (the wallet that launched the coin — creator fees are keyed
-  to it; no other wallet can claim them).
-- That wallet holds ~0.05 SOL for transaction fees.
-- Node 18.18+ locally, repo cloned, `npm install` run once.
+1. Import the GitHub repo into Vercel.
+2. That's it. The root `vercel.json` builds `packages/website`; demo mode
+   needs **no environment variables**. (Equivalent manual setup: set Root
+   Directory to `packages/website`, framework Next.js.)
+3. Later, add `NEXT_PUBLIC_API_URL=<oracle worker URL>` to switch data reads
+   from built-in definitions to the live API.
 
-## 1. Supabase (database)
+## 2 · Supabase (ledger)
 
-1. [supabase.com](https://supabase.com) → **New project** (any region, free tier is fine).
-2. SQL Editor → paste the whole of `supabase/migrations/0001_init.sql` → **Run**.
-3. Settings → API, copy:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (server-side only — never in the website)
+1. Create a project, open the SQL editor, run
+   `supabase/migrations/0001_init.sql`.
+2. Note the project URL and the **service_role** key (Settings → API).
+   The service key is server-side only — it never goes in the website.
 
-## 2. Railway (game-worker)
+## 3 · Oracle worker → Railway
 
-1. [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo** → pick this repo.
-2. Service settings:
-   - **Build command**: `npm install && npm run build --workspace packages/shared --workspace packages/fee-harvester`
-   - **Start command**: `npm run start --workspace packages/game-worker`
-   - (Or just let it pick up `packages/game-worker/railway.json`.)
-3. Variables — copy from `.env.example` and fill in:
-   - `RPC_URL` — a real RPC (free [Helius](https://helius.dev) endpoint recommended; public mainnet RPC will rate-limit the balance checks)
-   - `MINT_ADDRESS` — your coin's mint
-   - `GAME_VAULT_KEYPAIR` — paste the **raw JSON array** from the creator wallet's keypair file (`[12,34,...]`)
-   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from step 1
-   - `CORS_ORIGINS` — your site's domain once you have it, e.g. `https://www.hodlornohodl.fun`
-   - Optional: install the pump.fun SDKs the harvester calls:
-     they're required at runtime for the actual claim —
-     `npm i @pump-fun/pump-sdk @pump-fun/pump-swap-sdk -w packages/game-worker`
-     (committed to package.json is fine too; they're kept out by default so
-     the build doesn't depend on pump.fun's release cadence).
-4. Settings → Networking → **Generate Domain**. Note the URL — that's your API.
-5. Check logs: you should see `opened round #1` and `API listening`.
-   `GET https://<railway-domain>/health` → `{"ok":true}`.
+1. New Railway service from this repo; it picks up
+   `packages/oracle-worker/railway.json` (start:
+   `npm run start --workspace packages/oracle-worker`).
+2. Set variables:
+   ```
+   SUPABASE_URL=...
+   SUPABASE_SERVICE_ROLE_KEY=...
+   PARCL_LABS_API_KEY=...        # https://docs.parcllabs.com/
+   ORACLE_POLL_MINUTES=360
+   CORS_ORIGINS=https://<your-vercel-domain>
+   ```
+3. The worker mirrors market definitions into Postgres, pulls index series on
+   each tick, and settles any market whose window has elapsed. Without keys it
+   still boots and serves `/markets` — useful for API development.
 
-## 3. Vercel (website)
+## 4 · Contracts → Arbitrum Sepolia now, Robinhood Chain when public
 
-1. [vercel.com](https://vercel.com) → **Add New Project** → import this repo.
-2. **Root Directory**: `packages/website` (Framework: Next.js, auto-detected).
-3. Environment variables (all three from `packages/website/.env.example`):
-   - `NEXT_PUBLIC_API_URL` = the Railway domain from step 2.4 (https, no trailing slash)
-   - `NEXT_PUBLIC_RPC_URL` = same RPC family as the worker
-   - `NEXT_PUBLIC_MINT_ADDRESS` = your mint
-4. Deploy. Point your domain (e.g. `www.hodlornohodl.fun`) at the Vercel
-   project, then go back to Railway and set `CORS_ORIGINS` to that domain.
+Prereq: [Foundry](https://book.getfoundry.sh). From `packages/contracts`:
 
-## 4. Smoke test (do this on devnet first)
+```bash
+forge build
 
-1. Worker logs show a cycle every 15 minutes: claim (probably "no creator
-   fees" on devnet), settle, open.
-2. Site loads, wallet connects, pot and countdown render.
-3. With a wallet holding ≥ `MIN_HOLD_TOKENS`: pick a side → wallet prompts
-   for a **message signature** (not a transaction) → "Locked in" appears,
-   and the row shows up in Supabase → `picks`.
-4. With a small wallet: pick is rejected with the 1M message.
-5. After the flip: round appears in "Recent flips", payout SOL arrives,
-   `payouts` row has the tx signature.
+# 1. collateral: USDG address (testnet: any 18-decimal test ERC-20)
+# 2. deploy
+forge create src/HousePool.sol:HousePool        --constructor-args $USDG   ...
+forge create src/IndexOracle.sol:IndexOracle    ...
+forge create src/MarketFactory.sol:MarketFactory \
+  --constructor-args $USDG $HOUSE_POOL $ORACLE $TREASURY ...
 
-## Going to mainnet
+# 3. wire up
+cast send $HOUSE_POOL "setFactory(address)" $FACTORY
+cast send $ORACLE     "setPoster(address,bool)" $WORKER_KEY_ADDR true
 
-- Switch `RPC_URL`/`NEXT_PUBLIC_RPC_URL` to mainnet endpoints.
-- `EXCLUDED_OWNERS`: add the bonding-curve/AMM pool address, your treasury,
-  and any CEX wallets — anything that holds tokens but shouldn't play.
-- Fund the vault with a little extra SOL so the first rounds can pay even
-  before fees accrue (optional but a dead pot on day one is a bad look).
-- Read `docs/DISCLAIMER.md`. Seriously.
+# 4. approve templates, then create the five launch markets
+cast send $FACTORY "setTemplate(bytes32,bool,string,string)" \
+  $(cast keccak "city-race:max-gain") true "city-race:max-gain" "Parcl Labs metro price feed (US only)"
+cast send $FACTORY "createProtocolMarket(bytes32,string,string,uint8,uint64,uint256)" ...
+```
 
-## Ops notes
+Robinhood Chain is an Arbitrum Orbit L2 — when its public RPC opens, add it
+to `foundry.toml` and redeploy unchanged, with real USDG as collateral.
 
-- **Restarts are safe**: rounds/picks live in Supabase; a watchdog settles
-  any overdue round on boot.
-- **Vault runs dry?** Payouts fail, get recorded as `failed`, and the game
-  keeps going — the pot rebuilds from the next fee claim.
-- **Rotating the vault**: not possible — creator fees are bound to the
-  coin's creator wallet forever. Guard that keypair.
+**Do not deploy real funds without an audit and legal review** — see
+`DISCLAIMER.md`.
+
+## 5 · Go-live checklist
+
+- [ ] Vercel site up, demo trading works
+- [ ] Supabase migration applied; RLS verified (anon can read, not write)
+- [ ] Worker polling: `index_observations` filling per feed
+- [ ] A test market settled end-to-end on testnet (seed → trade → resolve →
+      redeem → residual sweep → fee distribution)
+- [ ] Oracle poster key stored as a secret, never in the repo
+- [ ] Legal review for prediction-market operation in target jurisdictions

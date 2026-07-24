@@ -1,28 +1,30 @@
-const LAMPORTS_PER_SOL = 1_000_000_000;
-
-export function formatSol(lamports: string | number | bigint, digits = 3): string {
-  const n = Number(lamports) / LAMPORTS_PER_SOL;
-  if (!isFinite(n)) return "0";
-  return n.toLocaleString(undefined, { maximumFractionDigits: digits });
+export function fmtUsd(n: number, digits = 2): string {
+  return n.toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
 }
 
-export function formatTokens(raw: string | bigint, decimals: number): string {
-  const n = Number(raw) / 10 ** decimals;
-  if (!isFinite(n)) return "0";
-  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
-  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
-  return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
+export function fmtCompact(n: number): string {
+  if (Math.abs(n) >= 1_000_000) return `${(n / 1_000_000).toFixed(1)}M`;
+  if (Math.abs(n) >= 1_000) return `${(n / 1_000).toFixed(1)}K`;
+  return n.toFixed(0);
 }
 
-export function shortAddress(addr: string, chars = 4): string {
-  if (addr.length <= chars * 2 + 3) return addr;
-  return `${addr.slice(0, chars)}…${addr.slice(-chars)}`;
+/** Probability → "62¢" price tag (1 share pays 1 USDG if it wins). */
+export function fmtCents(p: number): string {
+  return `${Math.round(p * 100)}¢`;
 }
 
-export function formatCountdown(msLeft: number): string {
-  if (msLeft <= 0) return "00:00";
-  const totalSec = Math.floor(msLeft / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+export function fmtPct(p: number, digits = 0): string {
+  return `${(p * 100).toFixed(digits)}%`;
+}
+
+export function fmtDate(iso: string): string {
+  return new Date(iso).toLocaleDateString("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  });
 }
