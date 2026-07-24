@@ -1,52 +1,48 @@
-# Read before going live
+# OVERBID — Disclaimer & risk notes
 
-This repo is provided as a working reference implementation. Deploying it
-for real people and real money is **your** decision and responsibility.
-Non-exhaustive things to think about first:
+**Read this before deploying any of this code with real funds.**
 
-## It is a game of chance
+## What this repository is
 
-Players stake nothing directly, but they receive randomized SOL payouts
-gated by holding a speculative asset. In many jurisdictions that can fall
-under gambling, sweepstakes, or lottery rules — and "the pot came from
-trading fees" is not automatically a defense. The 1M-token gate makes
-eligibility *purchasable*, which regulators may read as consideration.
-Get actual legal advice for the jurisdictions you expect players from,
-and geo-block where you have to.
+A working demo and reference implementation of a real-estate prediction
+market. The website is paper trading only: demo balances, no wallets, no real
+funds, no chain writes. The Solidity contracts are **unaudited** reference
+code.
 
-## It may look like a security
+## Legal / regulatory
 
-Marketing "hold our token, receive recurring SOL payouts funded by the
-project's revenue" is uncomfortably close to the language securities
-regulators quote back at token projects. How you market this matters as
-much as how it works. Again: real legal advice, not a README.
+Prediction markets are regulated financial activity in most jurisdictions
+(commodities, gaming, or securities law, depending on design and venue —
+e.g. CFTC jurisdiction in the US). Operating one for real money without
+appropriate authorization can be a crime. Housing-index derivatives may also
+implicate additional rules. **Get qualified legal advice for every
+jurisdiction you'd serve before going live.** Nothing in this repository is
+legal, financial, or investment advice; nothing here is an offer to trade.
 
-## Custody and key risk
+## Data licensing
 
-The creator wallet is the vault. Whoever holds that keypair can drain the
-pot. It sits as an env var on Railway — anyone with access to your Railway
-project effectively holds the bankroll. Creator fees cannot be re-keyed to
-a different wallet, so protect this one: minimal collaborator access, no
-keypair in git, consider sweeping excess balance to cold storage between
-rounds.
+Parcl Labs (and any index provider) data is licensed. Using index data to
+settle financial contracts typically requires a commercial license — the
+public API terms are not automatically enough. Secure data agreements before
+launch. Non-US indexes (e.g. Canada for Toronto) require their own licensed
+providers.
 
-## Randomness caveat
+## Economic risks
 
-The blockhash flip is fair *between players* (picks lock before the hash
-exists) but the operator could in principle delay settlement to re-roll.
-Publishing the blockhash and settle times (this implementation does both)
-makes that detectable, not impossible. If the pots get serious, upgrade
-`decideWinningSide()` to a VRF (e.g. Switchboard).
+- **LPs can lose money.** The House Pool underwrites markets; when traders
+  price outcomes better than the AMM, redemptions exceed seed + fees.
+- **Oracle trust.** v1 settlement relies on an allow-listed poster. It is
+  auditable, not trustless.
+- **Smart-contract risk.** Unaudited code, fixed-point arithmetic, adversarial
+  MEV environment. Audit before mainnet.
+- **Index risk.** Housing indexes revise, lag, and can be discontinued;
+  settlement rules must handle provider outages (the current code retries and
+  anchors to last-available observations — review whether that policy fits a
+  regulated deployment).
 
-## Fee-stream dependency
+## Branding
 
-pump.fun's creator-fee program is theirs to change. Claim instructions have
-already migrated once (`collect_creator_fee` → `v2`). Pin the SDK versions,
-watch their release notes, and expect to maintain the harvester.
-
-## Operational honesty
-
-The site shows lifetime fees claimed vs. paid out, and every claim/payout
-tx signature is recorded. Keep it that way — quietly skimming the vault
-while advertising "fees fund the game" is fraud in most places, no matter
-how the token is classified.
+"Robinhood", "Robinhood Chain", "USDG"/"Global Dollar", and "Parcl" are
+trademarks of their respective owners. This is an independent project that
+targets compatible infrastructure; nothing here implies endorsement by or
+affiliation with any of them.

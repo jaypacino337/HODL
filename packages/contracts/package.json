@@ -1,0 +1,7 @@
+{
+  "name": "@overbid/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OVERBID Solidity contracts (Foundry). No npm build — see README.md.",
+  "scripts": {}
+}

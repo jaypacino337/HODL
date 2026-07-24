@@ -1,41 +1,48 @@
 import type { Config } from "tailwindcss";
 
-// Palette lifted from the approved game mockup (hodlornohodlgamemockup.html).
+// OVERBID design system: dark "listing ink" greens, ticket-green up moves,
+// coral down moves, amber for the auction-paddle accent.
 const config: Config = {
-  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
+  content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        stage: {
-          950: "#0B0407",
-          900: "#160709",
-          800: "#1D0A0D",
-          700: "#2A0E11",
+        ink: {
+          950: "#050908",
+          900: "#0A110E",
+          850: "#0D1512",
+          800: "#101B16",
+          700: "#16241E",
+          600: "#1F3129",
         },
-        ember: {
-          400: "#FF6A55",
-          500: "#FF3B30",
-          600: "#C40E12",
-          700: "#8E060B",
+        up: {
+          300: "#7CF5C1",
+          400: "#3BEC9F",
+          500: "#00D97C",
+          600: "#00A85F",
         },
-        gold: {
-          200: "#FFE9A8",
-          300: "#FFD98A",
-          400: "#F6C14A",
-          500: "#D4A017",
-          600: "#B8860B",
+        down: {
+          400: "#FF7A70",
+          500: "#FF5D5D",
+          600: "#D93636",
         },
-        cream: "#FFF6E6",
-        smoked: "#C9A8A0",
-        good: "#57E389",
+        paddle: {
+          300: "#FFDE8A",
+          400: "#F2C14E",
+          500: "#DBA32E",
+        },
+        paper: "#EFF6F1",
+        moss: "#8FA69A",
+        line: "rgba(143, 166, 154, 0.18)",
       },
       fontFamily: {
-        display: ["Anton", "Impact", "'Arial Narrow Bold'", "sans-serif"],
-        body: ["'Barlow Semi Condensed'", "system-ui", "sans-serif"],
+        display: ["'Space Grotesk'", "system-ui", "sans-serif"],
+        body: ["Inter", "system-ui", "sans-serif"],
+        mono: ["'IBM Plex Mono'", "ui-monospace", "monospace"],
       },
       boxShadow: {
-        "glow-gold": "0 0 22px rgba(246,193,74,0.4)",
-        "glow-red": "0 0 22px rgba(255,45,40,0.55)",
+        "glow-up": "0 0 24px rgba(0, 217, 124, 0.25)",
+        "glow-soft": "0 18px 50px rgba(0, 0, 0, 0.45)",
       },
     },
   },

@@ -1,8 +1,8 @@
 {
-  "name": "hodl-or-no-hodl",
+  "name": "overbid",
   "private": true,
   "version": "0.1.0",
-  "description": "HODL OR NO HODL — the on-chain game show. pump.fun creator fees are claimed every 15 minutes into a pot; holders with 500K+ tokens pick a side, and the winning side splits the pot weighted by their bags.",
+  "description": "OVERBID — Trade where housing goes next. A real-estate prediction market: city-outcome shares collateralized in USDG, priced by an on-chain AMM, settled against housing price indexes. Built to deploy on Robinhood Chain.",
   "workspaces": [
     "packages/*"
   ],
@@ -11,7 +11,8 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:website": "npm run dev --workspace packages/website",
-    "start:worker": "npm run start --workspace packages/game-worker"
+    "build:website": "npm run build --workspace packages/website",
+    "start:oracle": "npm run start --workspace packages/oracle-worker"
   },
   "engines": {
     "node": ">=18.18.0"

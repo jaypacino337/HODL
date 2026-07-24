@@ -1,71 +1,80 @@
-# 💼 HODL OR NO HODL
+# 🏘️ OVERBID
 
-**The on-chain game show. Every 15 minutes, the fees fund the pot — pick a side and win it.**
+**Trade where housing goes next.**
 
-This is the full working implementation of [hodlornohodl.fun](https://www.hodlornohodl.fun):
-a Solana game where the token *plays itself*:
+A real-estate prediction market: every outcome — *“Which housing market rises
+most in 2026: Miami, New York, Austin, Phoenix, or Chicago?”*, *“Austin beats
+Phoenix this quarter?”*, *“Manhattan rent growth positive this month?”* — is a
+share you can buy and sell. At settlement, the housing index decides: winning
+shares redeem the collateral at 1 USDG each.
 
-1. **CLAIM** — every 15 minutes the game claims the coin's pump.fun **creator fees** into the game vault. Trading volume is the prize pool; nobody deposits anything.
-2. **QUALIFY** — anyone holding **1,000,000+ tokens** can play each round, free. A pick is a signed message: no transaction, no gas.
-3. **PICK** — choose your case: **HODL** or **NO HODL**. Switch any time until the round locks (30s before the flip).
-4. **FLIP** — at the buzzer a fresh finalized Solana blockhash decides the winning side. The blockhash is stored with the round so anyone can recompute the result.
-5. **PAY** — winners split the entire pot **pro-rata by how much they hold** (your bag is your score), paid instantly in SOL. If nobody picked the winning side, the pot rolls over and grows.
+```text
+USDG → buy city-outcome shares → House Pool liquidity enables trading
+     → 2% fees → 70% LPs · 10% creator · 20% treasury
+     → index settlement (Parcl Labs) → winning shares redeem 1:1
+```
 
-## Stack
+## The pitch, in four decisions
 
-Exactly three services, as designed:
+1. **Prediction markets first, perps later.** City-race and yes/no markets
+   need only an index reading and a date. Perpetual long/short markets on city
+   indexes come once there's index history, users, and liquidity depth.
+2. **LP shares, not a revenue token.** The House Pool is the “holders get a
+   piece” mechanism: LPs deposit USDG, seed every market, earn 70% of trading
+   fees plus settlement residuals — and carry the market risk that earns it.
+3. **The protocol funds the first five markets** from approved templates, and
+   because they're protocol-created, their 10% creator-fee cut routes straight
+   back into the House Pool — creator fees fund the liquidity pool.
+4. **Built for Robinhood Chain.** Contracts target the Arbitrum Orbit L2 with
+   USDG (Global Dollar) collateral; they run unchanged on Arbitrum Sepolia
+   today. US-only data in v1 (Parcl Labs); Toronto and other non-US cities
+   wait on a licensed local index provider.
+
+## Monorepo
 
 | Piece | Runs on | What it does |
 |---|---|---|
-| `packages/website` | **Vercel** | Next.js site — wallet connect, pick UI, live pot, countdown, leaderboard |
-| `packages/game-worker` | **Railway** | The 15-minute engine: fee claim → settle → payout → next round, plus the game API |
-| `supabase/` | **Supabase** | Postgres ledger of every round, pick, payout, and fee claim (RLS: public read, service-role write) |
+| `packages/website` | **Vercel** | Next.js site — the launch board, live trading demo (real FPMM math, paper USDG), House Pool page |
+| `packages/contracts` | **Robinhood Chain / Arbitrum** | `OverbidMarket` (n-outcome fixed-product AMM), `HousePool` (LP vault), `MarketFactory` (approved templates), `IndexOracle` |
+| `packages/oracle-worker` | **Railway** | Pulls Parcl Labs index data, keeps the ledger, computes settlements, serves the read API |
+| `packages/shared` | everywhere | Types, AMM math (the same math the contracts implement), the five launch-market definitions |
+| `supabase/` | **Supabase** | Postgres ledger: index feeds, observations, markets, settlements (RLS: public read, service-role write) |
 
-```
-packages/
-  shared/          env config, shared types, the signed pick-message format
-  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap AMM)
-  game-worker/     round engine + payouts + Express API  ← deploy to Railway
-  website/         Next.js + Tailwind game site           ← deploy to Vercel
-supabase/
-  migrations/      schema: rounds, picks, payouts, fee_claims + views
-docs/
-  ARCHITECTURE.md  data flow and design decisions
-  DEPLOYMENT.md    step-by-step: Supabase -> Railway -> Vercel
-  DISCLAIMER.md    legal / risk notes — read before going live
-```
+## Deploy the website to Vercel (one click)
 
-## Quickstart (local, devnet)
+The site needs **zero configuration**: import this repo into Vercel and ship.
+The root `vercel.json` points the build at `packages/website`; no environment
+variables are required for demo mode. (Alternative: set the project's Root
+Directory to `packages/website`.)
+
+## Quickstart (local)
 
 ```bash
 npm install
-cp .env.example .env                     # fill in mint, vault keypair, Supabase creds
-# run supabase/migrations/0001_init.sql in your Supabase SQL editor
-npm run start:worker                     # engine + API on :4000
-npm run dev:website                      # site on :3000, in another shell
+npm run dev:website        # site on :3000 — full demo, no env needed
+npm run start:oracle       # oracle worker API on :4000 (env optional)
 ```
 
-Full production walkthrough: **`docs/DEPLOYMENT.md`**.
+Full production walkthrough (Supabase → Railway → Vercel → contracts):
+**`docs/DEPLOYMENT.md`** · Economics: **`docs/ECONOMICS.md`** · Design:
+**`docs/ARCHITECTURE.md`**
 
-## How the money flows
+## The five launch markets
 
-pump.fun shares trading fees with the wallet that created a coin, claimable
-any time via a permissionless instruction. The game vault **is** that creator
-wallet: fees claim straight into it, the pot is its balance (minus a small
-fee reserve), and winner payouts are plain SOL transfers out of it. One
-wallet, fully auditable on-chain — every claim and payout signature is also
-written to Supabase and shown on the site.
+| Market | Type | Settles |
+|---|---|---|
+| Hottest housing market of 2026 (Miami·NY·Austin·Phoenix·Chicago) | city race, biggest % index gain wins | Jan 2027 |
+| Austin vs Phoenix — Q3 head-to-head | 2-way, better % change wins | Oct 2026 |
+| Manhattan rent growth positive in August? | yes/no on the rental index | Sep 2026 |
+| Miami up 5%+ in 2026? | yes/no threshold | Jan 2027 |
+| US housing up this quarter? | yes/no on the national index | Oct 2026 |
 
-## Fairness
-
-The flip is `sha256(blockhash | round-N)` — first byte even → HODL, odd →
-NO HODL — using a **finalized blockhash fetched at settlement**, a value
-that does not exist when picks lock 30 seconds earlier. Every settled round
-stores its blockhash, so the result is recomputable by anyone.
+Each is seeded with $10K of House Pool liquidity and settles against Parcl
+Labs price feeds ([docs.parcllabs.com](https://docs.parcllabs.com/)).
 
 ## Status
 
-Complete reference implementation, tested to compile and run — but not a
-deployed, funded, live game until *you* deploy it. Read `docs/DISCLAIMER.md`
-(this is a game of chance funded by memecoin fees — know your local rules)
-before pointing it at mainnet.
+Working demo + compile-clean reference implementation. **Not** a deployed,
+funded market: contracts are unaudited, no real funds move anywhere, and
+prediction markets carry serious legal/regulatory weight — read
+`docs/DISCLAIMER.md` before taking any of this toward production.
