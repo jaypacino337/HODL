@@ -31,6 +31,8 @@ contract MarketFactory {
     mapping(bytes32 => Template) public templates;
     address[] public allMarkets;
     mapping(address => bool) public isMarket;
+    /// House Pool seed still counted as deployed, per protocol market.
+    mapping(address => uint256) public seedOf;
 
     event TemplateSet(bytes32 indexed id, bool approved, string name);
     event MarketCreated(
@@ -83,6 +85,7 @@ contract MarketFactory {
             require(collateral.transferFrom(address(housePool), address(this), seedFromPool), "draw failed");
             collateral.approve(address(market), seedFromPool);
             market.seed(seedFromPool);
+            seedOf[address(market)] = seedFromPool;
         }
         emit MarketCreated(address(market), templateId, address(housePool), seedFromPool, 0);
     }
@@ -120,6 +123,20 @@ contract MarketFactory {
         );
         allMarkets.push(address(market));
         isMarket[address(market)] = true;
+    }
+
+    /// @notice After a protocol market resolves, anyone can reconcile the
+    ///         House Pool's books: the seed is no longer deployed capital
+    ///         (the market's residual value returns via sweepResidualToPool),
+    ///         so stop counting it in totalAssets. Without this the pool
+    ///         double-counts settled seeds and the last LP cannot withdraw.
+    function reconcileSettled(address market) external {
+        require(isMarket[market], "unknown market");
+        require(OverbidMarket(market).resolved(), "not resolved");
+        uint256 seedAmount = seedOf[market];
+        require(seedAmount > 0, "nothing to reconcile");
+        seedOf[market] = 0;
+        housePool.markSeedReturned(seedAmount);
     }
 
     function marketCount() external view returns (uint256) {

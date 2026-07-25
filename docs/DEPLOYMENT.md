@@ -38,27 +38,30 @@ the ones after it.
 
 ## 4 · Contracts → Arbitrum Sepolia now, Robinhood Chain when public
 
-Prereq: [Foundry](https://book.getfoundry.sh). From `packages/contracts`:
+Prereq: [Foundry](https://book.getfoundry.sh) and a testnet key with a little
+Arbitrum Sepolia ETH ([faucets](https://docs.arbitrum.io/for-devs/dev-tools-and-resources/chain-info)).
+One command deploys everything — collateral (MockUSDG with a public faucet),
+HousePool, IndexOracle, MarketFactory, approved templates, and the five
+launch markets:
 
 ```bash
+cd packages/contracts
 forge build
 
-# 1. collateral: USDG address (testnet: any 18-decimal test ERC-20)
-# 2. deploy
-forge create src/HousePool.sol:HousePool        --constructor-args $USDG   ...
-forge create src/IndexOracle.sol:IndexOracle    ...
-forge create src/MarketFactory.sol:MarketFactory \
-  --constructor-args $USDG $HOUSE_POOL $ORACLE $TREASURY ...
-
-# 3. wire up
-cast send $HOUSE_POOL "setFactory(address)" $FACTORY
-cast send $ORACLE     "setPoster(address,bool)" $WORKER_KEY_ADDR true
-
-# 4. approve templates, then create the five launch markets
-cast send $FACTORY "setTemplate(bytes32,bool,string,string)" \
-  $(cast keccak "city-race:max-gain") true "city-race:max-gain" "Parcl Labs metro price feed (US only)"
-cast send $FACTORY "createProtocolMarket(bytes32,string,string,uint8,uint64,uint256)" ...
+SEED_USD=50 POOL_FLOAT_USD=500 \
+forge script script/Deploy.s.sol:Deploy \
+  --rpc-url arbitrum_sepolia --private-key $KEY --broadcast
 ```
+
+- `SEED_USD` — per-market seed. $50 works; expect a ~5-point price move per
+  $5 trade on a 50/50 market. $250–500 keeps impact civil (see
+  `docs/ECONOMICS.md`).
+- `USDG=0x...` — use an existing collateral token instead of MockUSDG.
+- After deploy: `cast send $ORACLE "setPoster(address,bool)" $WORKER_ADDR true`
+  and put the addresses in `.env` for the oracle worker.
+
+Anyone can test-trade: `cast send $USDG "faucet()"` mints 10,000 mock USDG
+per day.
 
 Robinhood Chain is an Arbitrum Orbit L2 — when its public RPC opens, add it
 to `foundry.toml` and redeploy unchanged, with real USDG as collateral.
