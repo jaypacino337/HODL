@@ -12,7 +12,9 @@
     "test": "npm run test --workspaces --if-present",
     "dev:website": "npm run dev --workspace packages/website",
     "build:website": "npm run build --workspace packages/website",
-    "start:oracle": "npm run start --workspace packages/oracle-worker"
+    "start:oracle": "npm run start --workspace packages/oracle-worker",
+    "memescan": "npm run scan --workspace packages/memescan --",
+    "memescan:web": "npm run web --workspace packages/memescan"
   },
   "engines": {
     "node": ">=18.18.0"

@@ -34,6 +34,7 @@ USDG → buy city-outcome shares → House Pool liquidity enables trading
 
 | Piece | Runs on | What it does |
 |---|---|---|
+| `packages/memescan` | **CLI / local web** | ▄▖MEMESCAN — standalone memecoin narrative radar + rug/scam risk scanner (`npm run memescan`, `npm run memescan:web`) — see `packages/memescan/README.md` |
 | `packages/website` | **Vercel** | Next.js site — the launch board, live trading demo (real FPMM math, paper USDG), House Pool page |
 | `packages/contracts` | **Robinhood Chain / Arbitrum** | `OverbidMarket` (n-outcome fixed-product AMM), `HousePool` (LP vault), `MarketFactory` (approved templates), `IndexOracle` |
 | `packages/oracle-worker` | **Railway** | Pulls Parcl Labs index data, keeps the ledger, computes settlements, serves the read API |

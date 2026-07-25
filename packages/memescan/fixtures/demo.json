@@ -1,0 +1,173 @@
+{
+  "note": "Bundled demo snapshot — fictional tokens with realistic stat shapes, used when live APIs are unreachable. ageHours is converted to pairCreatedAt at load time so age-based heuristics behave.",
+  "tokens": [
+    {
+      "chainId": "solana", "address": "DemoJimothy1111111111111111111111111111111", "name": "Jimothy", "symbol": "JIMOTHY",
+      "priceUsd": 0.0082, "liquidityUsd": 182000, "fdvUsd": 8200000, "marketCapUsd": 8200000, "volume24hUsd": 2400000,
+      "priceChange": { "h1": 3.1, "h6": 11.4, "h24": 42.0 }, "txns24h": { "buys": 5200, "sells": 4880 },
+      "ageHours": 340, "boostsActive": 0, "hasProfile": true,
+      "description": "He's just Jimothy. He has a lanyard and a dream.",
+      "links": ["https://x.com/demo_jimothy", "https://jimothy.example"], "url": "https://dexscreener.com/solana/demo-jimothy"
+    },
+    {
+      "chainId": "solana", "address": "DemoGerald111111111111111111111111111111111", "name": "Gerald the Accountant", "symbol": "GERALD",
+      "priceUsd": 0.0011, "liquidityUsd": 45000, "fdvUsd": 1200000, "marketCapUsd": 1100000, "volume24hUsd": 310000,
+      "priceChange": { "h1": -1.2, "h6": 6.0, "h24": 18.5 }, "txns24h": { "buys": 1450, "sells": 1300 },
+      "ageHours": 96, "boostsActive": 0, "hasProfile": true,
+      "description": "Gerald does the books for the regular-guy meta.",
+      "links": ["https://x.com/demo_gerald"], "url": "https://dexscreener.com/solana/demo-gerald"
+    },
+    {
+      "chainId": "solana", "address": "DemoKevin1111111111111111111111111111111111", "name": "Just Kevin", "symbol": "KEVIN",
+      "priceUsd": 0.00092, "liquidityUsd": 22000, "fdvUsd": 920000, "marketCapUsd": 900000, "volume24hUsd": 540000,
+      "priceChange": { "h1": 22.0, "h6": 90.0, "h24": 240.0 }, "txns24h": { "buys": 2600, "sells": 1900 },
+      "ageHours": 14, "boostsActive": 1, "hasProfile": true,
+      "description": "Kevin. That's it. That's the coin.",
+      "links": ["https://x.com/demo_kevin"], "url": "https://dexscreener.com/solana/demo-kevin"
+    },
+    {
+      "chainId": "solana", "address": "DemoFelix1111111111111111111111111111111111", "name": "Felix From HR", "symbol": "FELIX",
+      "priceUsd": 0.0025, "liquidityUsd": 4100, "fdvUsd": 2500000, "marketCapUsd": 2500000, "volume24hUsd": 610000,
+      "priceChange": { "h1": 140.0, "h6": 420.0, "h24": 850.0 }, "txns24h": { "buys": 1900, "sells": 700 },
+      "ageHours": 6, "boostsActive": 2, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-felix"
+    },
+    {
+      "chainId": "solana", "address": "DemoCletus111111111111111111111111111111111", "name": "Cletus", "symbol": "CLETUS",
+      "priceUsd": 0.00004, "liquidityUsd": 9200, "fdvUsd": 400000, "marketCapUsd": 380000, "volume24hUsd": 150000,
+      "priceChange": { "h1": -8.0, "h6": -31.0, "h24": -62.0 }, "txns24h": { "buys": 1100, "sells": 3100 },
+      "ageHours": 52, "boostsActive": 0, "hasProfile": true,
+      "description": "Cletus took profit. On you.",
+      "links": ["https://x.com/demo_cletus"], "url": "https://dexscreener.com/solana/demo-cletus"
+    },
+    {
+      "chainId": "solana", "address": "DemoDoge21111111111111111111111111111111111", "name": "Doge 2.0", "symbol": "DOGE",
+      "priceUsd": 0.00031, "liquidityUsd": 6300, "fdvUsd": 4000000, "marketCapUsd": 4000000, "volume24hUsd": 480000,
+      "priceChange": { "h1": 45.0, "h6": 180.0, "h24": 410.0 }, "txns24h": { "buys": 2100, "sells": 1600 },
+      "ageHours": 30, "boostsActive": 1, "hasProfile": false,
+      "description": "The sequel nobody at Dogecoin asked for.",
+      "links": [], "url": "https://dexscreener.com/solana/demo-doge2"
+    },
+    {
+      "chainId": "base", "address": "0xDemoHoundy00000000000000000000000000000001", "name": "Houndy", "symbol": "HOUNDY",
+      "priceUsd": 0.014, "liquidityUsd": 61000, "fdvUsd": 1400000, "marketCapUsd": 1350000, "volume24hUsd": 260000,
+      "priceChange": { "h1": 0.4, "h6": 2.1, "h24": 9.0 }, "txns24h": { "buys": 800, "sells": 760 },
+      "ageHours": 520, "boostsActive": 0, "hasProfile": true,
+      "description": "A dog coin with a jobs program.",
+      "links": ["https://houndy.example", "https://x.com/demo_houndy"], "url": "https://dexscreener.com/base/demo-houndy"
+    },
+    {
+      "chainId": "solana", "address": "DemoShibai111111111111111111111111111111111", "name": "Shiba AI", "symbol": "SHIBAI",
+      "priceUsd": 0.00058, "liquidityUsd": 15000, "fdvUsd": 800000, "marketCapUsd": 780000, "volume24hUsd": 220000,
+      "priceChange": { "h1": 9.0, "h6": 40.0, "h24": 120.0 }, "txns24h": { "buys": 1300, "sells": 900 },
+      "ageHours": 20, "boostsActive": 1, "hasProfile": true,
+      "description": "A shiba inu that runs an AI agent. Two metas, one dog.",
+      "links": ["https://x.com/demo_shibai"], "url": "https://dexscreener.com/solana/demo-shibai"
+    },
+    {
+      "chainId": "solana", "address": "DemoMogcat111111111111111111111111111111111", "name": "Mog Manor Cat", "symbol": "MOGCAT",
+      "priceUsd": 0.0033, "liquidityUsd": 92000, "fdvUsd": 3100000, "marketCapUsd": 3000000, "volume24hUsd": 700000,
+      "priceChange": { "h1": 1.0, "h6": 8.0, "h24": 26.0 }, "txns24h": { "buys": 2400, "sells": 2300 },
+      "ageHours": 210, "boostsActive": 0, "hasProfile": true,
+      "description": "Cat that mogs.",
+      "links": ["https://x.com/demo_mogcat"], "url": "https://dexscreener.com/solana/demo-mogcat"
+    },
+    {
+      "chainId": "solana", "address": "DemoPurrlock11111111111111111111111111111111", "name": "Purrlock Holmes", "symbol": "PURRLOCK",
+      "priceUsd": 0.0009, "liquidityUsd": 12500, "fdvUsd": 600000, "marketCapUsd": 590000, "volume24hUsd": 180000,
+      "priceChange": { "h1": 6.0, "h6": 35.0, "h24": 95.0 }, "txns24h": { "buys": 1000, "sells": 720 },
+      "ageHours": 8, "boostsActive": 0, "hasProfile": true,
+      "description": "Detective cat investigating who pulled the liquidity.",
+      "links": ["https://x.com/demo_purrlock"], "url": "https://dexscreener.com/solana/demo-purrlock"
+    },
+    {
+      "chainId": "solana", "address": "DemoPepesol111111111111111111111111111111111", "name": "Pepe Solana", "symbol": "PEPE",
+      "priceUsd": 0.00002, "liquidityUsd": 3000, "fdvUsd": 900000, "marketCapUsd": 900000, "volume24hUsd": 320000,
+      "priceChange": { "h1": 80.0, "h6": 300.0, "h24": 600.0 }, "txns24h": { "buys": 1500, "sells": 500 },
+      "ageHours": 10, "boostsActive": 1, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-pepesol"
+    },
+    {
+      "chainId": "base", "address": "0xDemoAgentX0000000000000000000000000000001", "name": "AgentX Protocol", "symbol": "AGENTX",
+      "priceUsd": 0.12, "liquidityUsd": 215000, "fdvUsd": 12000000, "marketCapUsd": 11500000, "volume24hUsd": 1800000,
+      "priceChange": { "h1": -0.5, "h6": -3.0, "h24": -8.0 }, "txns24h": { "buys": 3900, "sells": 4100 },
+      "ageHours": 810, "boostsActive": 0, "hasProfile": true,
+      "description": "Autonomous AI agent framework token.",
+      "links": ["https://agentx.example", "https://x.com/demo_agentx"], "url": "https://dexscreener.com/base/demo-agentx"
+    },
+    {
+      "chainId": "solana", "address": "DemoTerminalGF111111111111111111111111111111", "name": "Terminal Girlfriend", "symbol": "TERMGF",
+      "priceUsd": 0.0016, "liquidityUsd": 8400, "fdvUsd": 1600000, "marketCapUsd": 1550000, "volume24hUsd": 420000,
+      "priceChange": { "h1": 35.0, "h6": 150.0, "h24": 310.0 }, "txns24h": { "buys": 1700, "sells": 1100 },
+      "ageHours": 18, "boostsActive": 1, "hasProfile": true,
+      "description": "An AI agent gf that posts for you.",
+      "links": ["https://x.com/demo_termgf"], "url": "https://dexscreener.com/solana/demo-termgf"
+    },
+    {
+      "chainId": "solana", "address": "DemoElon69111111111111111111111111111111111", "name": "Elon Mars Coin", "symbol": "ELON69",
+      "priceUsd": 0.0004, "liquidityUsd": 900, "fdvUsd": 2000000, "marketCapUsd": 2000000, "volume24hUsd": 260000,
+      "priceChange": { "h1": 120.0, "h6": 500.0, "h24": 900.0 }, "txns24h": { "buys": 1100, "sells": 300 },
+      "ageHours": 4, "boostsActive": 3, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-elon69"
+    },
+    {
+      "chainId": "solana", "address": "DemoMoodengJr1111111111111111111111111111111", "name": "Baby Moo Deng", "symbol": "BABYDENG",
+      "priceUsd": 0.0021, "liquidityUsd": 26000, "fdvUsd": 950000, "marketCapUsd": 940000, "volume24hUsd": 240000,
+      "priceChange": { "h1": 2.0, "h6": 12.0, "h24": 33.0 }, "txns24h": { "buys": 1200, "sells": 1050 },
+      "ageHours": 40, "boostsActive": 0, "hasProfile": true,
+      "description": "The baby fork of the chunky hippo meta.",
+      "links": ["https://x.com/demo_babydeng"], "url": "https://dexscreener.com/solana/demo-babydeng"
+    },
+    {
+      "chainId": "solana", "address": "DemoWojak1111111111111111111111111111111111", "name": "Wojak Wednesdays", "symbol": "WOJAK",
+      "priceUsd": 0.0062, "liquidityUsd": 56000, "fdvUsd": 1900000, "marketCapUsd": 1850000, "volume24hUsd": 330000,
+      "priceChange": { "h1": -2.0, "h6": -5.0, "h24": 4.0 }, "txns24h": { "buys": 900, "sells": 880 },
+      "ageHours": 260, "boostsActive": 0, "hasProfile": true,
+      "description": "He feels everything so you don't have to.",
+      "links": ["https://x.com/demo_wojak"], "url": "https://dexscreener.com/solana/demo-wojak"
+    },
+    {
+      "chainId": "solana", "address": "DemoMagamoon11111111111111111111111111111111", "name": "MAGA Moon Mission", "symbol": "MAGAMOON",
+      "priceUsd": 0.00013, "liquidityUsd": 7100, "fdvUsd": 500000, "marketCapUsd": 480000, "volume24hUsd": 190000,
+      "priceChange": { "h1": -12.0, "h6": -28.0, "h24": -45.0 }, "txns24h": { "buys": 600, "sells": 1400 },
+      "ageHours": 15, "boostsActive": 1, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-magamoon"
+    },
+    {
+      "chainId": "solana", "address": "DemoGurt11111111111111111111111111111111111", "name": "gurt: yo", "symbol": "GURT",
+      "priceUsd": 0.0044, "liquidityUsd": 130000, "fdvUsd": 4400000, "marketCapUsd": 4300000, "volume24hUsd": 1900000,
+      "priceChange": { "h1": 14.0, "h6": 60.0, "h24": 180.0 }, "txns24h": { "buys": 6100, "sells": 5200 },
+      "ageHours": 36, "boostsActive": 0, "hasProfile": true,
+      "description": "sybau. gurt is the moment.",
+      "links": ["https://x.com/demo_gurt"], "url": "https://dexscreener.com/solana/demo-gurt"
+    },
+    {
+      "chainId": "solana", "address": "DemoSogurt111111111111111111111111111111111", "name": "sogurt", "symbol": "GURT",
+      "priceUsd": 0.0006, "liquidityUsd": 11000, "fdvUsd": 700000, "marketCapUsd": 690000, "volume24hUsd": 400000,
+      "priceChange": { "h1": 20.0, "h6": 85.0, "h24": 210.0 }, "txns24h": { "buys": 1900, "sells": 1300 },
+      "ageHours": 12, "boostsActive": 1, "hasProfile": true,
+      "description": "the yogurt of gurt.",
+      "links": ["https://x.com/demo_sogurt"], "url": "https://dexscreener.com/solana/demo-sogurt"
+    },
+    {
+      "chainId": "solana", "address": "DemoGurtcoin11111111111111111111111111111111", "name": "gurt supremacy", "symbol": "GURT",
+      "priceUsd": 0.0002, "liquidityUsd": 5200, "fdvUsd": 1100000, "marketCapUsd": 1100000, "volume24hUsd": 350000,
+      "priceChange": { "h1": 60.0, "h6": 220.0, "h24": 450.0 }, "txns24h": { "buys": 820, "sells": 90 },
+      "ageHours": 7, "boostsActive": 1, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-gurtcoin"
+    },
+    {
+      "chainId": "solana", "address": "DemoBabygurt11111111111111111111111111111111", "name": "Baby Gurt", "symbol": "BABYGURT",
+      "priceUsd": 0.00009, "liquidityUsd": 3900, "fdvUsd": 300000, "marketCapUsd": 290000, "volume24hUsd": 90000,
+      "priceChange": { "h1": 10.0, "h6": 45.0, "h24": 130.0 }, "txns24h": { "buys": 500, "sells": 300 },
+      "ageHours": 5, "boostsActive": 0, "hasProfile": false,
+      "description": "",
+      "links": [], "url": "https://dexscreener.com/solana/demo-babygurt"
+    }
+  ]
+}

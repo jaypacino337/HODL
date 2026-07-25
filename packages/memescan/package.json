@@ -1,0 +1,18 @@
+{
+  "name": "@hodl/memescan",
+  "version": "0.1.0",
+  "private": true,
+  "description": "MEMESCAN — trending memecoin narrative scanner + rug/scam risk scorer. Finds the metas (jimothy-style character coins, dog szn, AI agents...) and flags the launches most likely to rug.",
+  "main": "dist/cli.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "scan": "ts-node src/cli.ts",
+    "web": "ts-node src/server.ts",
+    "test": "ts-node src/cli.ts --demo --json > /dev/null && echo memescan demo scan OK"
+  },
+  "devDependencies": {
+    "@types/node": "^20.14.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.5.4"
+  }
+}
