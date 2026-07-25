@@ -24,18 +24,40 @@ Robinhood orbit, with any test ERC-20 standing in on testnet.
 └── 20% → protocol treasury  (new market seeds, oracle costs, rewards)
 ```
 
-## Build
+## Market lifecycle (post-settlement ops)
 
-Uses [Foundry](https://book.getfoundry.sh) (no npm dependencies):
+After the oracle resolves a market, three permissionless calls close its
+books — the oracle worker can fire them, or anyone can:
+
+1. `market.distributeFees()` — 70% pool / 10% creator / 20% treasury
+2. `market.sweepResidualToPool()` — leftover AMM inventory → USDG → pool
+3. `factory.reconcileSettled(market)` — stop counting the seed as deployed
+   capital (skipping this double-counts pool assets and blocks the last LP
+   withdrawal — the E2E test covers it)
+
+## Build & deploy
+
+With [Foundry](https://book.getfoundry.sh):
 
 ```bash
 forge build
-forge test
-forge create src/HousePool.sol:HousePool --rpc-url arbitrum_sepolia --constructor-args <USDG>
+# one command: collateral (MockUSDG w/ faucet), core stack, templates,
+# and the five $SEED_USD-seeded launch markets
+SEED_USD=50 forge script script/Deploy.s.sol:Deploy \
+  --rpc-url arbitrum_sepolia --private-key $KEY --broadcast
 ```
 
-Deploy order: `HousePool` → `IndexOracle` → `MarketFactory(USDG, pool, oracle, treasury)`
-→ `pool.setFactory(factory)` → approve templates → `createProtocolMarket(...)` × 5.
+## Test (no Foundry needed)
 
-> **Status:** compile-clean reference code, *not audited*. Do not point real
-> funds at it without an audit; see `docs/DISCLAIMER.md`.
+`e2e/` runs the full lifecycle — deploy → LP deposits → seed → buy/sell with
+slippage guards → lock → resolve → 1:1 redeem → fee split → residual sweep →
+reconcile → all LPs exit — on an in-process EVM and checks money conservation
+to the cent:
+
+```bash
+cd e2e && npm install && npm test
+```
+
+> **Status:** compiles clean (solc 0.8.24, zero warnings) and the full
+> lifecycle is exercised end-to-end by `e2e/`, but the code is *not audited*.
+> Do not point real funds at it without an audit; see `docs/DISCLAIMER.md`.

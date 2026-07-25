@@ -16,3 +16,5 @@ data/
 coverage/
 keys/
 *.keypair.json
+packages/contracts/e2e/build.json
+packages/contracts/e2e/node_modules/

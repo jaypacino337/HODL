@@ -1,0 +1,13 @@
+{
+  "name": "overbid-contracts-e2e",
+  "private": true,
+  "description": "Full-lifecycle test of the OVERBID contracts on an in-process EVM (no Foundry needed). Deliberately NOT an npm workspace so its heavy deps stay out of the main install: cd here and `npm install && npm test`.",
+  "scripts": {
+    "test": "node build.js && node e2e.js"
+  },
+  "dependencies": {
+    "ethers": "^6.13.0",
+    "ganache": "^7.9.2",
+    "solc": "0.8.24"
+  }
+}
