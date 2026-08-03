@@ -24,6 +24,16 @@ const LEXICON: LexiconMeta[] = [
     ],
   },
   {
+    id: "viral-animal",
+    label: "IRL viral-animal meta (jimothy wave)",
+    // Coins riding real animals that went viral on TikTok/IG/X — Jimothy the
+    // Seattle raccoon (July 2026), Punch the macaque, Merlin the duck, etc.
+    words: [
+      "jimothy", "raccoon", "trashpanda", "punch", "macaque", "monkey",
+      "merlin", "duck", "neil", "seal", "moodeng", "pnut",
+    ],
+  },
+  {
     id: "dog",
     label: "Dog szn",
     words: ["dog", "doge", "shib", "shiba", "inu", "pup", "puppy", "woof", "floki", "bonk", "hound"],
