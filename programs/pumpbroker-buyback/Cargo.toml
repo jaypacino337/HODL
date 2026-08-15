@@ -1,0 +1,23 @@
+[package]
+name = "pumpbroker-buyback"
+version = "0.1.0"
+description = "PumpBrokers PIECE 3 — buyback. A separate program with its own deployment, switched on after launch."
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "pumpbroker_buyback"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build", "pumpbroker-mint/idl-build"]
+
+[dependencies]
+anchor-lang = { workspace = true }
+anchor-spl = { workspace = true }
+mpl-core = { workspace = true }
+pumpbroker-mint = { path = "../pumpbroker-mint", features = ["cpi"] }

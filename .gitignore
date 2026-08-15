@@ -1,20 +1,20 @@
 node_modules/
-dist/
-build/
 .next/
 out/
-*.log
+dist/
+build/
+target/
+.anchor/
+test-ledger/
+*.tsbuildinfo
 .env
 .env.local
 .env.*.local
-*.sqlite
-*.sqlite3
-data/
 .DS_Store
-*.tsbuildinfo
-.turbo/
-coverage/
-keys/
+.vercel
+
+# Never commit a keypair. Not the program keypair, not the deploy wallet, not a
+# throwaway devnet one — devnet habits become mainnet habits.
 *.keypair.json
-packages/contracts/e2e/build.json
-packages/contracts/e2e/node_modules/
+keypairs/
+!keypairs/.gitkeep
