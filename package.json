@@ -1,18 +1,22 @@
 {
-  "name": "overbid",
+  "name": "pumpbrokers",
   "private": true,
   "version": "0.1.0",
-  "description": "OVERBID — Trade where housing goes next. A real-estate prediction market: city-outcome shares collateralized in USDG, priced by an on-chain AMM, settled against housing price indexes. Built to deploy on Robinhood Chain.",
+  "description": "PumpBrokers — 1,000 pixel brokers on Solana. Three independently deployable pieces: honorary mint, public mint, buyback.",
   "workspaces": [
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "dev:website": "npm run dev --workspace packages/website",
-    "build:website": "npm run build --workspace packages/website",
-    "start:oracle": "npm run start --workspace packages/oracle-worker"
+    "build": "npm run build:site",
+    "build:site": "npm run build --workspace packages/pumpbrokers-site",
+    "dev": "npm run dev --workspace packages/pumpbrokers-site",
+    "test": "npm run test:unit && npm run check:programs",
+    "test:unit": "node --test \"tests/unit/*.test.ts\"",
+    "check:programs": "cargo check --workspace",
+    "typecheck": "npm run typecheck --workspace packages/pumpbrokers-site",
+    "verify": "node scripts/verify-deployment.ts",
+    "launch": "node scripts/set-active.ts --active true",
+    "rollback": "node scripts/set-active.ts --active false"
   },
   "engines": {
     "node": ">=18.18.0"
@@ -26,5 +30,6 @@
     "@types/react": "18.3.3",
     "@types/react-dom": "18.3.0"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"
 }

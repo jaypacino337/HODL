@@ -13,7 +13,7 @@ import {
   SYSVAR_SLOT_HASHES_PUBKEY,
   TransactionInstruction,
 } from "@solana/web3.js";
-import { MPL_CORE_PROGRAM_ID } from "../../../config";
+import { MPL_CORE_PROGRAM_ID } from "../../../config/index.ts";
 import {
   assetPda,
   buybackConfigPda,
@@ -23,7 +23,7 @@ import {
   poolPda,
   treasuryPda,
   vaultPda,
-} from "./pda";
+} from "./pda.ts";
 
 /** sha256("global:<snake_case_fn_name>")[0..8] */
 export const DISCRIMINATOR = {

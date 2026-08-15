@@ -3,7 +3,7 @@ import {
   BUYBACK_PROGRAM_ID,
   MINT_PROGRAM_ID,
   SEEDS,
-} from "../../../config";
+} from "../../../config/index.ts";
 
 export const mintProgramId = new PublicKey(MINT_PROGRAM_ID);
 export const buybackProgramId = new PublicKey(BUYBACK_PROGRAM_ID);
