@@ -94,7 +94,9 @@ npm run rollback       # set_active(false)  — same cost, same 5 seconds
 | | |
 |---|---|
 | Both Anchor programs | ✅ compile clean (`cargo check`) |
-| 26 unit tests | ✅ passing — config maths, error tables, account layouts, discriminators |
+| 33 unit tests | ✅ passing — config maths, error tables, account layouts, discriminators, instruction encoding |
+| All 11 operational scripts | ✅ written; each refuses safely when inputs are missing |
+| `price-upload.ts` | ✅ verified against real 1024×1024 PNGs |
 | Site | ✅ builds and serves; all 7 routes return 200 |
 | RPC proxy allowlist | ✅ verified rejecting non-allowlisted methods |
 | `anchor build` / `anchor test` | ❌ **never run** — no Solana toolchain in the build container |
@@ -106,7 +108,19 @@ blocked by this environment's egress proxy, so `cargo-build-sbf` and
 executed. Running it is the first step of
 [the runbook](docs/LAUNCH_RUNBOOK.md#phase-0--devnet-rehearsal-do-this-first-in-full).
 
-## Still needed
+## What's left
+
+Two things, and only one of them is mine:
+
+1. **Run `anchor build && anchor test`.** Nothing here has touched a validator. This is
+   the whole gap between "compiles" and "works", and it has to happen on a machine with
+   the Solana toolchain.
+2. **Devnet rehearsal**, then the pre-launch phases in the runbook. All cost-gated, all
+   scripted.
+
+After that, launch is `npm run launch`.
+
+## Still needed from you
 
 1. **True pixel resolution of the art** — if the 1024×1024 PNGs are upscales of
    e.g. 64×64 sources, storing the originals is visually identical (everything renders

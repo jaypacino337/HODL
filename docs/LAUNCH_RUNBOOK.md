@@ -14,28 +14,31 @@ fix", the answer is no. Pause instead (step L2), fix it, rehearse it, reopen.
 Being precise about this, because a runbook that lists commands which do not exist is
 worse than no runbook.
 
+Every script in this runbook is written. All of them refuse safely when their inputs
+are missing — none will half-run.
+
 | Script | Status |
 |---|---|
-| `scripts/set-active.ts` | ✅ built — the launch switch itself |
-| `scripts/verify-deployment.ts` | ✅ built — the pre-launch checklist |
-| `scripts/lib.ts` | ✅ built — cost gate + balance guard |
-| `scripts/price-upload.ts` | ❌ not built |
-| `scripts/upload-assets.ts` | ❌ not built — needs the art, see open question 1 |
-| `scripts/create-collection.ts` | ❌ not built |
-| `scripts/setup-mint.ts` | ❌ not built — needs the token mint + honorary indices |
-| `scripts/setup-buyback.ts` | ❌ not built |
-| `scripts/reveal.ts` | ❌ not built |
-| `scripts/devnet-lifecycle.ts` | ❌ not built |
+| `scripts/lib.ts` | ✅ cost gate + balance guard, shared by all |
+| `scripts/price-upload.ts` | ✅ **runs today** — local only, no wallet, no network |
+| `scripts/upload-assets.ts` | ✅ resumable Arweave upload, rewrites image URIs |
+| `scripts/create-collection.ts` | ✅ sets update authority to the config PDA |
+| `scripts/honorary-mint.ts` | ✅ Piece 1 — idempotent, writes receipts |
+| `scripts/setup-mint.ts` | ✅ initialize + init_pool, leaves the mint paused |
+| `scripts/set-active.ts` | ✅ **the launch switch** |
+| `scripts/verify-deployment.ts` | ✅ read-only pre-launch checklist |
+| `scripts/setup-buyback.ts` | ✅ connect Piece 3, and `--disconnect` to kill it |
+| `scripts/reveal.ts` | ✅ batched, resumable, `--dry-run` |
+| `scripts/devnet-lifecycle.ts` | ⚠️ present, but exits with instructions — see below |
 
-The two launch-critical scripts are done because those are the ones that run under
-time pressure. The rest are blocked on inputs that have not arrived yet (the art, the
-token mint address, the honorary indices) — writing them against guessed values would
-mean rewriting them.
+**What has NOT happened, and it is the important part:** the programs are
+compile-checked (`cargo check`) and their instruction encodings are unit-tested, but
+they have **never run against a validator**. The container this was built in has no
+Solana toolchain — `release.anza.xyz` and GitHub releases are both blocked by the
+egress proxy — so `anchor build` and `anchor test` have not been executed once.
 
-**Also unverified:** the programs are compile-checked (`cargo check`) but have never
-run against a validator. The container they were written in has no Solana toolchain —
-`release.anza.xyz` is blocked by the egress proxy — so `anchor build` and
-`anchor test` have not been executed. **Phase 0 below is not optional.**
+Every behavioural claim in this runbook is therefore a claim about code that has only
+been type-checked. **Phase 0 is not optional, and step 3 is where you start.**
 
 ---
 

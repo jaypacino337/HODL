@@ -113,6 +113,50 @@ export async function requireBalance(
   }
 }
 
+/**
+ * A Umi instance signing with the given keypair file, with mpl-core and the Irys
+ * uploader registered. Used by every script that touches assets or metadata.
+ */
+export async function umi(keypairPath: string) {
+  const { createUmi } = await import("@metaplex-foundation/umi-bundle-defaults");
+  const { mplCore } = await import("@metaplex-foundation/mpl-core");
+  const { irysUploader } = await import("@metaplex-foundation/umi-uploader-irys");
+  const { keypairIdentity } = await import("@metaplex-foundation/umi");
+
+  const u = createUmi(rpcEndpoint()).use(mplCore()).use(irysUploader());
+  const kp = u.eddsa.createKeypairFromSecretKey(loadKeypair(keypairPath).secretKey);
+  return u.use(keypairIdentity(kp));
+}
+
+/** `--name value` from argv. */
+export function arg(name: string): string | undefined {
+  const i = process.argv.indexOf(`--${name}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+}
+
+/** `--flag` presence. */
+export const flag = (name: string): boolean => process.argv.includes(`--${name}`);
+
+export function keypairArg(): string {
+  return arg("keypair") ?? `${process.env.HOME}/.config/solana/id.json`;
+}
+
+/**
+ * Appends or replaces a key in .env, so a script's output feeds the next script
+ * without anyone copy-pasting a base58 string by hand.
+ */
+export function writeEnv(key: string, value: string): void {
+  const { existsSync, readFileSync, writeFileSync } = require("node:fs") as typeof import("node:fs");
+  const path = ".env";
+  const line = `${key}=${value}`;
+  let body = existsSync(path) ? readFileSync(path, "utf8") : "";
+  body = body.match(new RegExp(`^${key}=.*$`, "m"))
+    ? body.replace(new RegExp(`^${key}=.*$`, "m"), line)
+    : `${body.replace(/\n?$/, "\n")}${line}\n`;
+  writeFileSync(path, body);
+  console.log(`  wrote ${key} to .env`);
+}
+
 export function explorer(sig: string): string {
   const q = CLUSTER === "mainnet-beta" ? "" : "?cluster=devnet";
   return `https://solscan.io/tx/${sig}${q}`;

@@ -185,6 +185,132 @@ export function setRedeemerIx(
   });
 }
 
+const borshString = (s: string) => {
+  const body = Buffer.from(s, "utf8");
+  const len = Buffer.alloc(4);
+  len.writeUInt32LE(body.length, 0);
+  return Buffer.concat([len, body]);
+};
+
+const borshU16Vec = (xs: number[]) => {
+  const len = Buffer.alloc(4);
+  len.writeUInt32LE(xs.length, 0);
+  const body = Buffer.alloc(xs.length * 2);
+  xs.forEach((x, i) => body.writeUInt16LE(x, i * 2));
+  return Buffer.concat([len, body]);
+};
+
+/** P4 — create config, vault and the program-owned treasury. Starts PAUSED. */
+export function initializeIx(params: {
+  authority: PublicKey;
+  paymentMint: PublicKey;
+  collection: PublicKey;
+  price: bigint;
+  totalSupply: number;
+  honoraryCount: number;
+  delayedReveal: boolean;
+  baseUri: string;
+  placeholderUri: string;
+}): TransactionInstruction {
+  const supply = Buffer.alloc(4);
+  supply.writeUInt16LE(params.totalSupply, 0);
+  supply.writeUInt16LE(params.honoraryCount, 2);
+
+  return new TransactionInstruction({
+    programId: mintProgramId,
+    keys: [
+      signer(params.authority),
+      rw(configPda()),
+      rw(vaultPda()),
+      ro(params.paymentMint),
+      rw(treasuryPda()),
+      ro(params.collection),
+      ro(TOKEN_PROGRAM_ID),
+      ro(SystemProgram.programId),
+    ],
+    data: Buffer.concat([
+      disc("initialize"),
+      u64le(params.price),
+      supply,
+      Buffer.from([params.delayedReveal ? 1 : 0]),
+      borshString(params.baseUri),
+      borshString(params.placeholderUri),
+    ]),
+  });
+}
+
+/** P5 — seed 0..totalSupply minus the honorary indices. */
+export function initPoolIx(
+  authority: PublicKey,
+  honoraryIndices: number[],
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: mintProgramId,
+    keys: [
+      signer(authority),
+      ro(configPda()),
+      rw(poolPda()),
+      ro(SystemProgram.programId),
+    ],
+    data: Buffer.concat([disc("init_pool"), borshU16Vec(honoraryIndices)]),
+  });
+}
+
+/** R1 — publish one asset's real URI after mint-out. */
+export function revealIx(params: {
+  authority: PublicKey;
+  collection: PublicKey;
+  mintNumber: number;
+  artIndex: number;
+}): TransactionInstruction {
+  const args = Buffer.alloc(4);
+  args.writeUInt16LE(params.mintNumber, 0);
+  args.writeUInt16LE(params.artIndex, 2);
+
+  return new TransactionInstruction({
+    programId: mintProgramId,
+    keys: [
+      signer(params.authority),
+      ro(configPda()),
+      ro(poolPda()),
+      rw(assetPda(params.mintNumber)),
+      rw(params.collection),
+      ro(mplCoreProgramId),
+      ro(SystemProgram.programId),
+    ],
+    data: Buffer.concat([disc("reveal"), args]),
+  });
+}
+
+/** B2 — create the buyback program's config. Starts PAUSED. */
+export function buybackInitializeIx(
+  authority: PublicKey,
+  payoutAmount: bigint,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: buybackProgramId,
+    keys: [
+      signer(authority),
+      rw(buybackConfigPda()),
+      ro(configPda()),
+      ro(SystemProgram.programId),
+    ],
+    data: Buffer.concat([disc("initialize"), u64le(payoutAmount)]),
+  });
+}
+
+/** B2 — open or close redemption. Independent of the mint's own pause switch. */
+export function buybackSetActiveIx(
+  authority: PublicKey,
+  active: boolean,
+): TransactionInstruction {
+  return new TransactionInstruction({
+    programId: buybackProgramId,
+    keys: [signer(authority, false), rw(buybackConfigPda())],
+    data: Buffer.concat([disc("set_active"), Buffer.from([active ? 1 : 0])]),
+  });
+}
+
 export function withdrawTreasuryIx(params: {
   authority: PublicKey;
   paymentMint: PublicKey;
