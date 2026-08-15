@@ -1,95 +1,97 @@
 # Architecture
 
 ```
-                     ┌─────────────────────────────────────────────┐
-                     │                 SOLANA                      │
-                     │  pump.fun creator-fee vaults   game vault   │
-                     │  (bonding curve + PumpSwap)    (SOL pot)    │
-                     └────────▲───────────────▲──────────┬─────────┘
-                              │ claim (15min) │ balances │ payouts
-                              │               │          ▼
-┌──────────────┐   HTTPS   ┌──┴───────────────┴─────────────────────┐
-│   WEBSITE    │──────────▶│              GAME-WORKER               │
-│   (Vercel)   │  /api/*   │              (Railway)                 │
-│              │           │  cron: claim → settle → open round     │
-│ wallet sign  │           │  API: state / history / pick           │
-└──────────────┘           └──────────────────┬─────────────────────┘
-                                              │ service-role writes
-                                              ▼
-                           ┌────────────────────────────────────────┐
-                           │           SUPABASE (Postgres)          │
-                           │ rounds · picks · payouts · fee_claims  │
-                           │ views: round_summaries · leaderboard   │
-                           └────────────────────────────────────────┘
+                    ┌──────────────────────────────────────────────┐
+                    │                  SOLANA                      │
+                    │ pump.fun fee vaults · treasury · buy txs     │
+                    └──────▲──────────▲──────────┬───────────┬─────┘
+                     claim │ verify   │ payments │ buybacks  │ reward payouts
+                           │          │          ▼           ▼
+┌──────────────┐  HTTPS  ┌─┴──────────┴────────────────────────────┐
+│   TERMINAL   │────────▶│                ENGINE                   │
+│   (Vercel)   │  /api/* │               (Railway)                 │
+│  wallet sign │         │ 15m claim+split · 1h scan · 4h buyback  │
+└──────────────┘         │ weekly epoch payout · ads · points API  │
+                         └───────────────────┬─────────────────────┘
+        DexScreener · CoinGecko ─────────────┤ service-role writes
+        news API · X API (keyed) ────────────┤
+                                             ▼
+                        ┌─────────────────────────────────────────┐
+                        │            SUPABASE (Postgres)          │
+                        │ fee_claims · ledger · buybacks · scans  │
+                        │ social_posts · epochs · payouts · ads   │
+                        └─────────────────────────────────────────┘
 ```
 
-## The 15-minute cycle (`game-worker/src/engine.ts`)
+## The four loops (`engine/src/engine.ts`)
 
-Every `ROUND_INTERVAL_MS` (default 15 min) the worker runs one tick:
+**CLAIM (15 min).** `harvestPumpFunCreatorFees()` claims both creator-fee
+vaults (bonding curve pre-graduation, PumpSwap after). Each claim is split
+on the `ledger`: `FEE_BUYBACK_SHARE` (50%) credited to the buyback pool,
+the remainder credited to the open epoch's rewards pool. One treasury
+wallet, pure accounting — pools can never spend money that isn't there.
 
-1. **CLAIM** — `harvestPumpFunCreatorFees()` checks both creator-fee vaults
-   (bonding-curve PDA pre-graduation, PumpSwap PDA post-graduation) and
-   claims anything accrued. Fees land as SOL in the game vault, which is the
-   coin's creator wallet. Each claim is logged to `fee_claims`.
-2. **SETTLE** — for the round whose `settles_at` has passed:
-   - Pot = vault balance − `VAULT_RESERVE_LAMPORTS` (rollover included).
-   - Fetch a **finalized blockhash**; `sha256(blockhash | round-N)[0]`
-     even → HODL, odd → NO HODL. Stored on the round row for public audit.
-   - Re-fetch each picker's live token balance. Below the 1M threshold →
-     pick voided. Otherwise the balance is the player's **weight**.
-   - Winners = pickers on the winning side; each gets
-     `pot × weight / totalWinnerWeight`, sent as batched SOL transfers
-     (10 per tx). Results land in `payouts` with tx signatures.
-   - No winners → nothing sent; the pot stays in the vault and rolls over.
-3. **OPEN** — insert the next round (`locks_at` = `settles_at` − 30s).
+**SCAN (1 h).** `scanner.ts` sweeps sources in parallel and stores a ranked
+scan. DexScreener boosts (enriched with live pair price/volume) and
+CoinGecko trending run keyless; news lights up with `NEWS_API_KEY`; TikTok
+is a one-function adapter awaiting a trends provider. Composite score 0-100
+blends source rank and 24h volume. Source statuses are stored with every
+scan and shown on the terminal.
 
-A 30-second watchdog also settles overdue rounds after restarts, so a
-Railway redeploy mid-round never wedges the game.
+**BUYBACK (4 h).** Spends `min(buyback pool, treasury - reserve)` buying
+the token — bonding-curve buy pre-graduation, PumpSwap after (SDKs resolved
+at runtime, like the fee claim). Failures and missing SDKs are recorded as
+`failed`/`skipped` rows; funds stay pooled. Optionally `BURN_BUYBACKS`.
 
-## Picks are signed messages, not transactions
+**EPOCH (weekly).** At epoch end the rewards pool pays out pro-rata by
+approved attention points that epoch (batched SOL transfers, dust
+threshold), the epoch is marked paid, the next one opens. No approved
+points → the pool rolls forward.
 
-The website asks the connected wallet to `signMessage()` the canonical
-string from `@hodl/shared`'s `pickMessage()`:
+## Attention points
 
-```
-HODL OR NO HODL | round 42 | pick HODL | wallet <base58>
-```
+`POST /api/attention/submit` takes `{wallet, url, signature}` where the
+signature is the wallet's ed25519 signature over the canonical string in
+`@attn/shared` — nobody can farm points for wallets they don't control.
+URLs must be real `x.com/<user>/status/<id>` links and are unique — one
+submission per post, ever.
 
-`POST /api/pick` re-derives that exact string and verifies the ed25519
-signature against the claimed pubkey (tweetnacl), so nobody can pick on
-behalf of a wallet they don't control. The worker then checks the wallet's
-live token balance against `MIN_HOLD_TOKENS` before accepting. Picks
-upsert — players can flip sides freely until `locks_at`.
+With `X_BEARER_TOKEN`: the engine reads the tweet via the X API, checks it
+actually mentions the ticker, and scores `100 + 2×likes + 5×reposts +
+3×replies` (cap 10,000) — auto-approved or auto-denied with the reason
+stored. Without: posts sit `pending` for the admin review endpoint
+(`x-admin-key` header). Tiers are lifetime-point thresholds; the terminal
+labels them as airdrop *eligibility tracking*, never a promise.
 
-Playing is therefore free (no gas), can't move funds, and requires no
-approvals — the only on-chain movement is the worker paying winners.
+## Ads
 
-## Why the flip can't be gamed
+`POST /api/ads/book` (signed) prices `days × AD_PRICE_LAMPORTS_PER_DAY`
+and returns the treasury address. The buyer pays from any wallet and
+confirms with the transaction signature; `payments.ts` verifies on-chain
+that the treasury's balance actually increased by the price in that exact
+transaction (signature reuse is blocked). On activation the revenue splits
+on the ledger: 90% buyback pool, 10% dev pool. Ads expire automatically;
+an admin endpoint can reject content. Ad links render with
+`rel="nofollow sponsored"`.
 
-- Players can't game it: picks lock 30s before settlement, and the deciding
-  blockhash doesn't exist yet at lock time.
-- The operator *could* delay settlement fishing for a favorable hash —
-  which is why the blockhash is stored and the settle time is public; any
-  tampering is visible as a late settle. For stronger guarantees, swap in a
-  VRF (e.g. Switchboard) — the seam is `decideWinningSide()`, one function.
-
-## Data model (Supabase)
+## Data model
 
 | Table | Purpose |
 |---|---|
-| `rounds` | one row per round: timing, status, pot, winning side, decision blockhash |
-| `picks` | PK `(round_id, wallet)`: side, balance at pick, signature |
-| `payouts` | winner, weight, amount, payout tx signature, sent/failed |
-| `fee_claims` | every creator-fee claim with tx signature |
+| `fee_claims` | every creator-fee claim + tx signature |
+| `ledger` | signed pool movements (buyback/rewards/dev) — pools are `sum(lamports)` |
+| `buybacks` | each execution: spent, tx, sent/failed/skipped + note |
+| `epochs`, `epoch_payouts` | weekly reward cycles and who got paid what |
+| `social_posts` | submissions, verification status, points |
+| `ads` | bookings, payment signature, run window |
+| `scans`, `scan_items` | every scanner sweep, ranked |
 
-Views `round_summaries`, `leaderboard`, `game_totals` pre-aggregate what
-the API serves. RLS: everything world-readable; only the worker's
-service-role key writes. Token amounts are `numeric` (SPL u64 can overflow
-signed bigint).
+RLS: world-readable, service-role writes. Views `attention_leaderboard`
+and `platform_totals` pre-aggregate for the API.
 
 ## Trust model
 
-Custodial by design for v1: the creator wallet is the vault and the worker
-signs payouts. Every fee claim and payout is an on-chain signature recorded
-in Supabase and rendered on the site, so operators can be audited. The
-serverless-free worker (one Railway service) keeps ops surface minimal.
+Custodial v1: the creator wallet is the treasury and the engine signs
+everything. In exchange, everything is receipts: claims, buybacks, payouts
+and ad payments all carry tx signatures stored publicly, and the 50/50 &
+90/10 splits are enforced in one place (`ledger`) that anyone can audit.

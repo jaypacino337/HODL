@@ -1,41 +1,31 @@
 import type { Config } from "tailwindcss";
 
-// Palette lifted from the approved game mockup (hodlornohodlgamemockup.html).
+// Terminal palette — amber-on-black with green/red data accents.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
   theme: {
     extend: {
       colors: {
-        stage: {
-          950: "#0B0407",
-          900: "#160709",
-          800: "#1D0A0D",
-          700: "#2A0E11",
+        term: {
+          bg: "#050807",
+          panel: "#0A100D",
+          panel2: "#0D1511",
+          border: "#1C2A22",
+          bright: "#22392E",
         },
-        ember: {
-          400: "#FF6A55",
-          500: "#FF3B30",
-          600: "#C40E12",
-          700: "#8E060B",
+        amber: {
+          DEFAULT: "#FFB000",
+          dim: "#8A6A1C",
+          hi: "#FFD23F",
         },
-        gold: {
-          200: "#FFE9A8",
-          300: "#FFD98A",
-          400: "#F6C14A",
-          500: "#D4A017",
-          600: "#B8860B",
-        },
-        cream: "#FFF6E6",
-        smoked: "#C9A8A0",
-        good: "#57E389",
+        pos: "#2BD96A",
+        neg: "#FF4545",
+        cyan: "#35C9E8",
+        dim: "#5C6B63",
+        paper: "#D8E2DC",
       },
       fontFamily: {
-        display: ["Anton", "Impact", "'Arial Narrow Bold'", "sans-serif"],
-        body: ["'Barlow Semi Condensed'", "system-ui", "sans-serif"],
-      },
-      boxShadow: {
-        "glow-gold": "0 0 22px rgba(246,193,74,0.4)",
-        "glow-red": "0 0 22px rgba(255,45,40,0.55)",
+        mono: ["'IBM Plex Mono'", "'JetBrains Mono'", "ui-monospace", "SFMono-Regular", "monospace"],
       },
     },
   },

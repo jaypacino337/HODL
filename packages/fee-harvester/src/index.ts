@@ -1,4 +1,4 @@
-import { loadConfig, makeConnection } from "@hodl/shared";
+import { loadConfig, makeConnection } from "@attn/shared";
 import { harvestPumpFunCreatorFees } from "./harvestPumpFunCreatorFees";
 
 export {
@@ -10,16 +10,16 @@ export {
 } from "./harvestPumpFunCreatorFees";
 
 /**
- * One harvest: claim any accrued pump.fun creator fees into the game vault.
- * Called by the game-worker at the top of every 15-minute round cycle, or
+ * One harvest: claim any accrued pump.fun creator fees into the treasury.
+ * Called by the engine every 15 minutes, or
  * run standalone via `npm run harvest`.
  */
 export async function runHarvestCycle() {
   const config = loadConfig();
   const connection = makeConnection(config.rpcUrl);
 
-  console.log("[harvester] claiming pump.fun creator fees into the game vault...");
-  const results = await harvestPumpFunCreatorFees(connection, config.gameVaultKeypair).catch((err) => {
+  console.log("[harvester] claiming pump.fun creator fees into the treasury...");
+  const results = await harvestPumpFunCreatorFees(connection, config.treasuryKeypair).catch((err) => {
     console.warn("[harvester] pump.fun claim skipped:", err.message);
     return [];
   });

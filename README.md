@@ -1,71 +1,65 @@
-# 💼 HODL OR NO HODL
+# A: ATTENTION MARKETS
 
-**The on-chain game show. Every 15 minutes, the fees fund the pot — pick a side and win it.**
+**Attention is currency. Attention is power.**
 
-This is the full working implementation of [hodlornohodl.fun](https://www.hodlornohodl.fun):
-a Solana game where the token *plays itself*:
+A Bloomberg-style terminal for the attention economy, powered by its own
+token's fees. The engine runs four loops, forever:
 
-1. **CLAIM** — every 15 minutes the game claims the coin's pump.fun **creator fees** into the game vault. Trading volume is the prize pool; nobody deposits anything.
-2. **QUALIFY** — anyone holding **1,000,000+ tokens** can play each round, free. A pick is a signed message: no transaction, no gas.
-3. **PICK** — choose your case: **HODL** or **NO HODL**. Switch any time until the round locks (30s before the flip).
-4. **FLIP** — at the buzzer a fresh finalized Solana blockhash decides the winning side. The blockhash is stored with the round so anyone can recompute the result.
-5. **PAY** — winners split the entire pot **pro-rata by how much they hold** (your bag is your score), paid instantly in SOL. If nobody picked the winning side, the pot rolls over and grows.
+1. **CLAIM** — every 15 minutes, the coin's pump.fun creator fees are claimed
+   into the treasury and split on a public ledger: **50% buybacks / 50%
+   attention rewards**.
+2. **SCAN** — every hour the Attention Scanner sweeps the markets: boosted
+   DexScreener tokens, CoinGecko trending, news headlines, trend slots — and
+   ranks everything by a composite attention score on the terminal.
+3. **PAY** — post about the ticker on X, log the link in the terminal (one
+   signed message, no gas), earn **attention points**. Every weekly epoch, the
+   rewards pool pays contributors pro-rata by points, in SOL. Lifetime points
+   track tier (**OBSERVER → SIGNAL → AMPLIFIER → OPERATOR → INSIDER**) and
+   airdrop eligibility.
+4. **MONETIZE** — projects buy ad slots on the terminal, paid in SOL, verified
+   on-chain. Revenue splits **90% buybacks / 10% development**. Buybacks
+   execute automatically on schedule.
 
 ## Stack
 
-Exactly three services, as designed:
-
 | Piece | Runs on | What it does |
 |---|---|---|
-| `packages/website` | **Vercel** | Next.js site — wallet connect, pick UI, live pot, countdown, leaderboard |
-| `packages/game-worker` | **Railway** | The 15-minute engine: fee claim → settle → payout → next round, plus the game API |
-| `supabase/` | **Supabase** | Postgres ledger of every round, pick, payout, and fee claim (RLS: public read, service-role write) |
+| `packages/website` | **Vercel** | The terminal: scanner, flywheel, leaderboard, your-terminal, adspace, wire |
+| `packages/engine` | **Railway** | Claims + splits fees, buybacks, scanner, points, epochs, ads, API |
+| `supabase/` | **Supabase** | Public ledger: claims, buybacks, posts, epochs, payouts, ads, scans |
 
 ```
 packages/
-  shared/          env config, shared types, the signed pick-message format
-  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap AMM)
-  game-worker/     round engine + payouts + Express API  ← deploy to Railway
-  website/         Next.js + Tailwind game site           ← deploy to Vercel
-supabase/
-  migrations/      schema: rounds, picks, payouts, fee_claims + views
-docs/
-  ARCHITECTURE.md  data flow and design decisions
-  DEPLOYMENT.md    step-by-step: Supabase -> Railway -> Vercel
-  DISCLAIMER.md    legal / risk notes — read before going live
+  shared/          config, types, signed-message formats
+  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap)
+  engine/          the four loops + terminal API        ← Railway
+  website/         the terminal (Next.js + Tailwind)    ← Vercel
+supabase/migrations/  full schema, RLS public-read
+docs/              ARCHITECTURE · DEPLOYMENT · DISCLAIMER
 ```
 
 ## Quickstart (local, devnet)
 
 ```bash
 npm install
-cp .env.example .env                     # fill in mint, vault keypair, Supabase creds
-# run supabase/migrations/0001_init.sql in your Supabase SQL editor
-npm run start:worker                     # engine + API on :4000
-npm run dev:website                      # site on :3000, in another shell
+cp .env.example .env             # mint, treasury keypair, Supabase creds, ADMIN_KEY
+# run supabase/migrations/0001_init.sql in the Supabase SQL editor
+npm run start:engine             # loops + API on :4000
+npm run dev:website              # terminal on :3000
 ```
 
-Full production walkthrough: **`docs/DEPLOYMENT.md`**.
+Production walkthrough: **`docs/DEPLOYMENT.md`**.
 
-## How the money flows
+## Honesty notes
 
-pump.fun shares trading fees with the wallet that created a coin, claimable
-any time via a permissionless instruction. The game vault **is** that creator
-wallet: fees claim straight into it, the pot is its balance (minus a small
-fee reserve), and winner payouts are plain SOL transfers out of it. One
-wallet, fully auditable on-chain — every claim and payout signature is also
-written to Supabase and shown on the site.
-
-## Fairness
-
-The flip is `sha256(blockhash | round-N)` — first byte even → HODL, odd →
-NO HODL — using a **finalized blockhash fetched at settlement**, a value
-that does not exist when picks lock 30 seconds earlier. Every settled round
-stores its blockhash, so the result is recomputable by anyone.
-
-## Status
-
-Complete reference implementation, tested to compile and run — but not a
-deployed, funded, live game until *you* deploy it. Read `docs/DISCLAIMER.md`
-(this is a game of chance funded by memecoin fees — know your local rules)
-before pointing it at mainnet.
+- The scanner's DexScreener + CoinGecko sources are live with no keys. News
+  activates with `NEWS_API_KEY`; TikTok needs a trends provider plugged into
+  one function (`scanner.ts`). The terminal displays each source's real
+  status — nothing pretends to be live.
+- X posts auto-verify (mention check + engagement-weighted points) when
+  `X_BEARER_TOKEN` is set; otherwise submissions queue for manual review
+  through the admin endpoint. No token, no honor-system points.
+- Every claim, buyback, reward payout, and ad payment is an on-chain
+  signature recorded in Supabase and printed on the Wire.
+- "Airdrop eligibility" is tracked transparently and promised nowhere. Read
+  `docs/DISCLAIMER.md` before going live.

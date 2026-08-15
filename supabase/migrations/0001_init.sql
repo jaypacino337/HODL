@@ -1,43 +1,9 @@
--- HODL OR NO HODL — core schema.
+-- ATTENTION MARKETS — core schema.
 -- Run with: supabase db push   (or paste into the Supabase SQL editor)
 --
--- Token amounts are stored as numeric because SPL balances are u64 and can
--- overflow Postgres' signed bigint. Lamport amounts fit bigint, but numeric
--- everywhere keeps arithmetic in views loss-free.
+-- Lamport/token amounts are numeric so nothing overflows signed bigint.
 
-create table if not exists public.rounds (
-  id bigint generated always as identity primary key,
-  round_number bigint not null unique,
-  opened_at timestamptz not null default now(),
-  locks_at timestamptz not null,
-  settles_at timestamptz not null,
-  status text not null default 'open' check (status in ('open', 'settled')),
-  pot_lamports numeric not null default 0,
-  winning_side text check (winning_side in ('HODL', 'NOHODL')),
-  decision_blockhash text,
-  settled_at timestamptz
-);
-
-create table if not exists public.picks (
-  round_id bigint not null references public.rounds (id) on delete cascade,
-  wallet text not null,
-  side text not null check (side in ('HODL', 'NOHODL')),
-  balance_at_pick numeric not null,
-  signature text not null,
-  picked_at timestamptz not null default now(),
-  primary key (round_id, wallet)
-);
-
-create table if not exists public.payouts (
-  id bigint generated always as identity primary key,
-  round_id bigint not null references public.rounds (id) on delete cascade,
-  wallet text not null,
-  side text not null check (side in ('HODL', 'NOHODL')),
-  weight numeric not null,
-  amount_lamports numeric not null,
-  tx_signature text,
-  status text not null check (status in ('sent', 'failed'))
-);
+-- ── fee engine ─────────────────────────────────────────────────────────
 
 create table if not exists public.fee_claims (
   id bigint generated always as identity primary key,
@@ -47,55 +13,149 @@ create table if not exists public.fee_claims (
   tx_signature text not null
 );
 
-create index if not exists idx_picks_round on public.picks (round_id);
-create index if not exists idx_payouts_round on public.payouts (round_id);
-create index if not exists idx_payouts_wallet on public.payouts (wallet);
-create index if not exists idx_rounds_status on public.rounds (status);
+create table if not exists public.buybacks (
+  id bigint generated always as identity primary key,
+  executed_at timestamptz not null default now(),
+  lamports_spent numeric not null,
+  tokens_bought numeric,
+  tx_signature text,
+  status text not null check (status in ('sent', 'failed', 'skipped')),
+  note text
+);
 
--- The game-worker writes with the service-role key (bypasses RLS).
--- Everyone else — including the website if you ever point it straight at
--- Supabase — gets read-only access.
-alter table public.rounds enable row level security;
-alter table public.picks enable row level security;
-alter table public.payouts enable row level security;
+-- Every internal money movement, so pools are pure accounting over one
+-- treasury wallet: positive = into the named pool, negative = out.
+create table if not exists public.ledger (
+  id bigint generated always as identity primary key,
+  at timestamptz not null default now(),
+  pool text not null check (pool in ('buyback', 'rewards', 'dev')),
+  lamports numeric not null,
+  reason text not null,
+  ref text
+);
+
+-- ── attention points ───────────────────────────────────────────────────
+
+create table if not exists public.epochs (
+  id bigint generated always as identity primary key,
+  starts_at timestamptz not null default now(),
+  ends_at timestamptz not null,
+  status text not null default 'open' check (status in ('open', 'paid')),
+  rewards_pool_lamports numeric not null default 0
+);
+
+create table if not exists public.social_posts (
+  id bigint generated always as identity primary key,
+  wallet text not null,
+  url text not null unique,
+  status text not null default 'pending' check (status in ('pending', 'approved', 'denied')),
+  points integer not null default 0,
+  epoch_id bigint references public.epochs (id),
+  signature text not null,
+  submitted_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  note text
+);
+
+create table if not exists public.epoch_payouts (
+  id bigint generated always as identity primary key,
+  epoch_id bigint not null references public.epochs (id) on delete cascade,
+  wallet text not null,
+  points integer not null,
+  amount_lamports numeric not null,
+  tx_signature text,
+  status text not null check (status in ('sent', 'failed'))
+);
+
+-- ── ads ────────────────────────────────────────────────────────────────
+
+create table if not exists public.ads (
+  id bigint generated always as identity primary key,
+  wallet text not null,
+  headline text not null,
+  url text not null,
+  days integer not null check (days between 1 and 30),
+  price_lamports numeric not null,
+  booking_code text not null unique,
+  status text not null default 'pending_payment'
+    check (status in ('pending_payment', 'active', 'expired', 'rejected')),
+  payment_signature text,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  created_at timestamptz not null default now()
+);
+
+-- ── attention scanner ──────────────────────────────────────────────────
+
+create table if not exists public.scans (
+  id bigint generated always as identity primary key,
+  ran_at timestamptz not null default now(),
+  sources jsonb not null default '[]'::jsonb
+);
+
+create table if not exists public.scan_items (
+  id bigint generated always as identity primary key,
+  scan_id bigint not null references public.scans (id) on delete cascade,
+  rank integer not null,
+  source text not null,
+  symbol text not null,
+  name text not null,
+  score numeric not null,
+  price_usd numeric,
+  change_24h numeric,
+  volume_24h_usd numeric,
+  url text
+);
+
+create index if not exists idx_posts_wallet on public.social_posts (wallet);
+create index if not exists idx_posts_epoch on public.social_posts (epoch_id);
+create index if not exists idx_payouts_wallet on public.epoch_payouts (wallet);
+create index if not exists idx_scan_items_scan on public.scan_items (scan_id);
+create index if not exists idx_ads_status on public.ads (status);
+create index if not exists idx_ledger_pool on public.ledger (pool);
+
+-- The engine writes with the service-role key (bypasses RLS); the world
+-- reads.
 alter table public.fee_claims enable row level security;
+alter table public.buybacks enable row level security;
+alter table public.ledger enable row level security;
+alter table public.epochs enable row level security;
+alter table public.social_posts enable row level security;
+alter table public.epoch_payouts enable row level security;
+alter table public.ads enable row level security;
+alter table public.scans enable row level security;
+alter table public.scan_items enable row level security;
 
-create policy "public read rounds" on public.rounds for select using (true);
-create policy "public read picks" on public.picks for select using (true);
-create policy "public read payouts" on public.payouts for select using (true);
 create policy "public read fee_claims" on public.fee_claims for select using (true);
+create policy "public read buybacks" on public.buybacks for select using (true);
+create policy "public read ledger" on public.ledger for select using (true);
+create policy "public read epochs" on public.epochs for select using (true);
+create policy "public read social_posts" on public.social_posts for select using (true);
+create policy "public read epoch_payouts" on public.epoch_payouts for select using (true);
+create policy "public read ads" on public.ads for select using (true);
+create policy "public read scans" on public.scans for select using (true);
+create policy "public read scan_items" on public.scan_items for select using (true);
 
--- Aggregations the API serves without doing group-bys in JS.
+-- ── aggregations ───────────────────────────────────────────────────────
 
-create or replace view public.round_summaries
-with (security_invoker = on) as
-select
-  r.round_number,
-  r.winning_side,
-  r.decision_blockhash,
-  r.pot_lamports,
-  r.settled_at,
-  count(p.id) filter (where p.status = 'sent') as winners_paid,
-  coalesce(sum(p.amount_lamports) filter (where p.status = 'sent'), 0) as paid_lamports
-from public.rounds r
-left join public.payouts p on p.round_id = r.id
-where r.status = 'settled'
-group by r.id;
-
-create or replace view public.leaderboard
+create or replace view public.attention_leaderboard
 with (security_invoker = on) as
 select
   wallet,
-  sum(amount_lamports) as total_won_lamports,
-  count(*) as wins
-from public.payouts
-where status = 'sent'
+  sum(points) as lifetime_points,
+  count(*) filter (where status = 'approved') as approved_posts
+from public.social_posts
+where status = 'approved'
 group by wallet
-order by total_won_lamports desc
+order by lifetime_points desc
 limit 100;
 
-create or replace view public.game_totals
+create or replace view public.platform_totals
 with (security_invoker = on) as
 select
-  (select coalesce(sum(lamports), 0) from public.fee_claims) as total_claimed_lamports,
-  (select coalesce(sum(amount_lamports), 0) from public.payouts where status = 'sent') as total_paid_lamports;
+  (select coalesce(sum(lamports), 0) from public.fee_claims) as fees_claimed_lamports,
+  (select coalesce(sum(lamports_spent), 0) from public.buybacks where status = 'sent') as buyback_spent_lamports,
+  (select coalesce(sum(amount_lamports), 0) from public.epoch_payouts where status = 'sent') as rewards_paid_lamports,
+  (select coalesce(sum(price_lamports), 0) from public.ads where status in ('active', 'expired')) as ad_revenue_lamports,
+  (select coalesce(sum(-lamports), 0) from public.ledger where pool = 'dev' and lamports < 0) as dev_paid_lamports,
+  (select coalesce(sum(lamports), 0) from public.ledger where pool = 'buyback') as buyback_pool_lamports;

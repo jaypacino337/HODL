@@ -1,5 +1,5 @@
 {
-  "name": "@hodl/fee-harvester",
+  "name": "@attn/fee-harvester",
   "version": "0.1.0",
   "private": true,
   "main": "dist/index.js",
@@ -9,7 +9,7 @@
     "harvest": "ts-node src/index.ts"
   },
   "dependencies": {
-    "@hodl/shared": "^0.1.0",
+    "@attn/shared": "^0.1.0",
     "@solana/web3.js": "^1.95.3"
   },
   "devDependencies": {

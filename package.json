@@ -1,8 +1,8 @@
 {
-  "name": "hodl-or-no-hodl",
+  "name": "attention-markets",
   "private": true,
   "version": "0.1.0",
-  "description": "HODL OR NO HODL — the on-chain game show. pump.fun creator fees are claimed every 15 minutes into a pot; holders with 500K+ tokens pick a side, and the winning side splits the pot weighted by their bags.",
+  "description": "ATTENTION MARKETS \u2014 the attention terminal. Creator fees power the ecosystem: 50% buybacks / 50% attention rewards; ad revenue 90% buybacks / 10% development. Attention is currency.",
   "workspaces": [
     "packages/*"
   ],
@@ -11,7 +11,7 @@
     "lint": "npm run lint --workspaces --if-present",
     "test": "npm run test --workspaces --if-present",
     "dev:website": "npm run dev --workspace packages/website",
-    "start:worker": "npm run start --workspace packages/game-worker"
+    "start:engine": "npm run start --workspace packages/engine"
   },
   "engines": {
     "node": ">=18.18.0"

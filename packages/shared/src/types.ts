@@ -1,112 +1,163 @@
-export type Side = "HODL" | "NOHODL";
-
-export type RoundStatus = "open" | "settled";
-
-export interface Round {
-  id: number;
-  roundNumber: number;
-  openedAt: string; // ISO timestamp
-  locksAt: string; // picks rejected after this
-  settlesAt: string; // when the coin flips
-  status: RoundStatus;
-  potLamports: string;
-  winningSide: Side | null;
-  decisionBlockhash: string | null;
-  settledAt: string | null;
-}
-
-export interface PickRecord {
-  roundId: number;
-  wallet: string;
-  side: Side;
-  /** Raw base-unit token balance at the time the pick was accepted. */
-  balanceAtPick: string;
-  signature: string;
-  pickedAt: string;
-}
-
-export interface PayoutRecord {
-  roundId: number;
-  wallet: string;
-  side: Side;
-  /** Raw base-unit token balance at settlement — the player's weight. */
-  weight: string;
-  amountLamports: string;
-  txSignature: string | null;
-  status: "sent" | "failed";
-}
-
-export interface SideTotals {
-  players: number;
-  weight: string; // summed raw token balances
-}
-
-export interface RoundSummary {
-  roundNumber: number;
-  winningSide: Side | null;
-  decisionBlockhash: string | null;
-  potLamports: string;
-  settledAt: string | null;
-  winnersPaid: number;
-  paidLamports: string;
-}
-
-/** Everything the website needs to render the live game, in one call. */
-export interface GameStateResponse {
-  mint: string;
-  tokenDecimals: number;
-  minHoldTokens: number;
-  potLamports: string;
-  round: {
-    roundNumber: number;
-    locksAt: string;
-    settlesAt: string;
-  } | null;
-  totals: Record<Side, SideTotals>;
-  lastRound: RoundSummary | null;
-}
-
-export interface LeaderboardEntry {
-  wallet: string;
-  totalWonLamports: string;
-  wins: number;
-}
-
-export interface HistoryResponse {
-  rounds: RoundSummary[];
-  leaderboard: LeaderboardEntry[];
-  /** Most recent creator-fee claims, newest first — feeds the studio feed. */
-  claims: Array<Pick<FeeClaimRecord, "claimedAt" | "lamports" | "txSignature">>;
-  totalClaimedLamports: string;
-  totalPaidLamports: string;
-}
-
-/** Per-wallet stats for the "Your Box" contestant panel. */
-export interface PlayerStatsResponse {
-  wallet: string;
-  wins: number;
-  totalWonLamports: string;
-  /** Consecutive recent rounds (newest first) this wallet made a pick in. */
-  playStreak: number;
-  currentPick: Side | null;
-}
-
-export interface HolderBalance {
-  owner: string;
-  tokenAccount: string;
-  amount: string; // raw base units, bigint-safe over JSON
-}
-
 export interface HarvestResult {
   source: "pumpfun_creator_fee";
   lamportsHarvested: string;
   signature: string;
 }
 
-/**
- * The exact message a wallet signs to submit a pick. Must be byte-identical
- * between the website (signer) and the game-worker (verifier).
- */
-export function pickMessage(roundNumber: number, side: Side, wallet: string): string {
-  return `HODL OR NO HODL | round ${roundNumber} | pick ${side} | wallet ${wallet}`;
+// ── Attention scanner ────────────────────────────────────────────────────
+
+export type ScanSource = "dexscreener" | "coingecko" | "news" | "tiktok";
+
+export interface ScanItem {
+  rank: number;
+  source: ScanSource;
+  symbol: string;
+  name: string;
+  /** 0-100 composite attention score. */
+  score: number;
+  priceUsd: number | null;
+  change24h: number | null;
+  volume24hUsd: number | null;
+  url: string | null;
+}
+
+export interface SourceStatus {
+  source: ScanSource;
+  status: "live" | "needs_key" | "error";
+  detail: string;
+}
+
+export interface ScanResponse {
+  ranAt: string | null;
+  items: ScanItem[];
+  sources: SourceStatus[];
+}
+
+// ── Attention points ─────────────────────────────────────────────────────
+
+export type PostStatus = "pending" | "approved" | "denied";
+
+export interface SocialPost {
+  id: number;
+  wallet: string;
+  url: string;
+  status: PostStatus;
+  points: number;
+  submittedAt: string;
+  reviewedAt: string | null;
+  note: string | null;
+}
+
+export interface AttentionRank {
+  wallet: string;
+  lifetimePoints: number;
+  epochPoints: number;
+  approvedPosts: number;
+}
+
+/** Lifetime-points tiers shown on the terminal. Eligibility, not a promise. */
+export const TIERS = [
+  { name: "OBSERVER", min: 0 },
+  { name: "SIGNAL", min: 1_000 },
+  { name: "AMPLIFIER", min: 5_000 },
+  { name: "OPERATOR", min: 25_000 },
+  { name: "INSIDER", min: 100_000 },
+] as const;
+
+export function tierFor(lifetimePoints: number): string {
+  let tier = TIERS[0].name as string;
+  for (const t of TIERS) if (lifetimePoints >= t.min) tier = t.name;
+  return tier;
+}
+
+// ── Epochs & rewards ─────────────────────────────────────────────────────
+
+export interface Epoch {
+  id: number;
+  startsAt: string;
+  endsAt: string;
+  status: "open" | "paid";
+  rewardsPoolLamports: string;
+}
+
+export interface EpochPayout {
+  epochId: number;
+  wallet: string;
+  points: number;
+  amountLamports: string;
+  txSignature: string | null;
+  status: "sent" | "failed";
+}
+
+// ── Ads ──────────────────────────────────────────────────────────────────
+
+export type AdStatus = "pending_payment" | "active" | "expired" | "rejected";
+
+export interface Ad {
+  id: number;
+  wallet: string;
+  headline: string;
+  url: string;
+  days: number;
+  priceLamports: string;
+  status: AdStatus;
+  bookingCode: string;
+  paymentSignature: string | null;
+  startsAt: string | null;
+  endsAt: string | null;
+  createdAt: string;
+}
+
+// ── API responses ────────────────────────────────────────────────────────
+
+export interface OverviewResponse {
+  ticker: string;
+  mint: string;
+  treasury: string;
+  totals: {
+    feesClaimedLamports: string;
+    buybackSpentLamports: string;
+    rewardsPaidLamports: string;
+    adRevenueLamports: string;
+    devPaidLamports: string;
+  };
+  pools: {
+    /** Treasury lamports earmarked for buybacks. */
+    buybackPoolLamports: string;
+    /** Current epoch's attention-rewards pool. */
+    rewardsPoolLamports: string;
+  };
+  epoch: (Epoch & { msRemaining: number }) | null;
+  splits: {
+    feeBuybackShare: number;
+    revenueBuybackShare: number;
+  };
+  adPriceLamportsPerDay: string;
+  lastScanAt: string | null;
+  lastClaimAt: string | null;
+}
+
+export interface FeedEvent {
+  at: string;
+  kind: "claim" | "buyback" | "reward" | "post" | "ad" | "scan";
+  text: string;
+}
+
+export interface PlayerResponse {
+  wallet: string;
+  lifetimePoints: number;
+  epochPoints: number;
+  tier: string;
+  rank: number | null;
+  posts: SocialPost[];
+}
+
+// ── Signed-message formats (must match website byte-for-byte) ────────────
+
+export function submitPostMessage(url: string, wallet: string): string {
+  return `ATTENTION MARKETS | submit post | ${url} | wallet ${wallet}`;
+}
+
+export function bookAdMessage(headline: string, days: number, wallet: string): string {
+  return `ATTENTION MARKETS | book ad | ${days}d | ${headline} | wallet ${wallet}`;
 }

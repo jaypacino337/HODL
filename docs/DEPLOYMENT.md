@@ -5,78 +5,69 @@ Deploy in this order; each step feeds the next its config.
 ## 0. Prerequisites
 
 - The coin exists on pump.fun and you control the **creator wallet's**
-  keypair JSON (the wallet that launched the coin — creator fees are keyed
-  to it; no other wallet can claim them).
-- That wallet holds ~0.05 SOL for transaction fees.
-- Node 18.18+ locally, repo cloned, `npm install` run once.
+  keypair JSON (creator fees are keyed to it; no other wallet can claim).
+- That wallet holds ~0.1 SOL for transaction fees.
+- Node 18.18+, repo cloned, `npm install` run once.
 
 ## 1. Supabase (database)
 
-1. [supabase.com](https://supabase.com) → **New project** (any region, free tier is fine).
-2. SQL Editor → paste the whole of `supabase/migrations/0001_init.sql` → **Run**.
+1. [supabase.com](https://supabase.com) → **New project**.
+2. SQL Editor → paste all of `supabase/migrations/0001_init.sql` → **Run**.
 3. Settings → API, copy:
    - **Project URL** → `SUPABASE_URL`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (server-side only — never in the website)
+   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
 
-## 2. Railway (game-worker)
+## 2. Railway (engine)
 
-1. [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo** → pick this repo.
-2. Service settings:
-   - **Build command**: `npm install && npm run build --workspace packages/shared --workspace packages/fee-harvester`
-   - **Start command**: `npm run start --workspace packages/game-worker`
-   - (Or just let it pick up `packages/game-worker/railway.json`.)
-3. Variables — copy from `.env.example` and fill in:
-   - `RPC_URL` — a real RPC (free [Helius](https://helius.dev) endpoint recommended; public mainnet RPC will rate-limit the balance checks)
-   - `MINT_ADDRESS` — your coin's mint
-   - `GAME_VAULT_KEYPAIR` — paste the **raw JSON array** from the creator wallet's keypair file (`[12,34,...]`)
-   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` — from step 1
-   - `CORS_ORIGINS` — your site's domain once you have it, e.g. `https://www.hodlornohodl.fun`
-   - Optional: install the pump.fun SDKs the harvester calls:
-     they're required at runtime for the actual claim —
-     `npm i @pump-fun/pump-sdk @pump-fun/pump-swap-sdk -w packages/game-worker`
-     (committed to package.json is fine too; they're kept out by default so
-     the build doesn't depend on pump.fun's release cadence).
-4. Settings → Networking → **Generate Domain**. Note the URL — that's your API.
-5. Check logs: you should see `opened round #1` and `API listening`.
-   `GET https://<railway-domain>/health` → `{"ok":true}`.
+1. [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo**.
+2. Build command: `npm install && npm run build --workspace packages/shared --workspace packages/fee-harvester`
+   Start command: `npm run start --workspace packages/engine`
+   (or let it pick up `packages/engine/railway.json`).
+3. Variables — copy `.env.example` and fill in:
+   - `RPC_URL` — real RPC (free [Helius](https://helius.dev) key recommended)
+   - `MINT_ADDRESS`, `TICKER`
+   - `TREASURY_KEYPAIR` — the creator wallet's raw JSON array `[12,34,...]`
+   - `DEV_WALLET` — where the 10% development share goes
+   - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
+   - `ADMIN_KEY` — long random string; it guards post/ad review
+   - Optional but recommended:
+     - `X_BEARER_TOKEN` — X API v2 token → auto-verified, engagement-weighted points
+     - `NEWS_API_KEY` — newsapi.org → news source live on the scanner
+     - `npm i @pump-fun/pump-sdk @pump-fun/pump-swap-sdk -w packages/engine`
+       → real fee claims and buyback execution (without them those steps
+       log+record `skipped` and funds stay pooled)
+4. Networking → **Generate Domain** → that's the API. `GET /health` → `{"ok":true}`.
+5. Logs should show the four loops arming and a first scan storing items.
 
-## 3. Vercel (website)
+## 3. Vercel (terminal)
 
-1. [vercel.com](https://vercel.com) → **Add New Project** → import this repo.
-2. **Root Directory**: `packages/website` (Framework: Next.js, auto-detected).
-3. Environment variables (all three from `packages/website/.env.example`):
-   - `NEXT_PUBLIC_API_URL` = the Railway domain from step 2.4 (https, no trailing slash)
-   - `NEXT_PUBLIC_RPC_URL` = same RPC family as the worker
-   - `NEXT_PUBLIC_MINT_ADDRESS` = your mint
-4. Deploy. Point your domain (e.g. `www.hodlornohodl.fun`) at the Vercel
-   project, then go back to Railway and set `CORS_ORIGINS` to that domain.
+1. **Add New → Project** → import the repo.
+2. **Root Directory**: `packages/website`.
+3. Env vars: `NEXT_PUBLIC_API_URL` (Railway domain), `NEXT_PUBLIC_RPC_URL`,
+   `NEXT_PUBLIC_MINT_ADDRESS`.
+4. Deploy, point your domain, then set `CORS_ORIGINS` on Railway to it.
 
-## 4. Smoke test (do this on devnet first)
+## 4. Smoke test
 
-1. Worker logs show a cycle every 15 minutes: claim (probably "no creator
-   fees" on devnet), settle, open.
-2. Site loads, wallet connects, pot and countdown render.
-3. With a wallet holding ≥ `MIN_HOLD_TOKENS`: pick a side → wallet prompts
-   for a **message signature** (not a transaction) → "Locked in" appears,
-   and the row shows up in Supabase → `picks`.
-4. With a small wallet: pick is rejected with the 1M message.
-5. After the flip: round appears in "Recent flips", payout SOL arrives,
-   `payouts` row has the tx signature.
-
-## Going to mainnet
-
-- Switch `RPC_URL`/`NEXT_PUBLIC_RPC_URL` to mainnet endpoints.
-- `EXCLUDED_OWNERS`: add the bonding-curve/AMM pool address, your treasury,
-  and any CEX wallets — anything that holds tokens but shouldn't play.
-- Fund the vault with a little extra SOL so the first rounds can pay even
-  before fees accrue (optional but a dead pot on day one is a bad look).
-- Read `docs/DISCLAIMER.md`. Seriously.
+1. Terminal loads; scanner fills within the hour (immediately after engine
+   boot, in practice); tape scrolls; source status row shows
+   dexscreener/coingecko **live**.
+2. Connect a wallet → Your Terminal opens → submit an X post link → wallet
+   prompts for a **message signature** → row appears in Supabase
+   `social_posts` (auto-approved if `X_BEARER_TOKEN` is set, else pending).
+3. Approve pending posts:
+   `curl -X POST <api>/api/admin/review-post -H 'x-admin-key: …' -H 'content-type: application/json' -d '{"id":1,"action":"approve","points":250}'`
+4. Book a test ad for 1 day → pay the quoted SOL to the treasury → confirm
+   with the tx signature → ad renders in Adspace; `ledger` shows the 90/10
+   split.
+5. After fees accrue: Wire prints claims every 15 min, the buyback pool
+   arms, and a buyback executes on the next 4h tick.
 
 ## Ops notes
 
-- **Restarts are safe**: rounds/picks live in Supabase; a watchdog settles
-  any overdue round on boot.
-- **Vault runs dry?** Payouts fail, get recorded as `failed`, and the game
-  keeps going — the pot rebuilds from the next fee claim.
-- **Rotating the vault**: not possible — creator fees are bound to the
-  coin's creator wallet forever. Guard that keypair.
+- **Restarts are safe** — all state lives in Supabase; epochs/pools resume.
+- **Buyback prerequisites missing?** Executions record `skipped` and the
+  pool keeps growing; nothing is lost.
+- **Epoch pays nothing?** No approved points that week — the pool rolls
+  into the next epoch automatically.
+- Guard `TREASURY_KEYPAIR` and `ADMIN_KEY` like the bankroll they are.
