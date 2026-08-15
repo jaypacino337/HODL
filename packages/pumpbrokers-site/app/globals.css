@@ -1,0 +1,73 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    @apply bg-ink text-bone font-mono antialiased;
+  }
+
+  /* Dark only, by design. A light mode would fight the whole palette. */
+  * {
+    border-radius: 0 !important;
+  }
+
+  /* Every NFT image renders as pixels. Never smoothed, at any zoom, on any
+     browser, including the Safari/Firefox spellings. */
+  img.pixel,
+  canvas.pixel {
+    image-rendering: pixelated;
+    image-rendering: -moz-crisp-edges;
+    image-rendering: crisp-edges;
+  }
+
+  /* Tabular figures so live counters don't jitter as digits change. */
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    @apply bg-neon text-ink;
+  }
+}
+
+@layer components {
+  .panel {
+    @apply border-2 border-edge bg-slab p-4 shadow-pixel;
+  }
+
+  .panel-neon {
+    @apply border-2 border-pump bg-slab p-4 shadow-pixel;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center border-2 border-edge bg-slab px-4 py-3
+           text-sm uppercase tracking-widest text-bone shadow-pixel-sm
+           transition-none hover:bg-edge active:translate-x-[2px] active:translate-y-[2px]
+           active:shadow-none disabled:cursor-not-allowed disabled:opacity-40
+           disabled:hover:bg-slab;
+  }
+
+  .btn-primary {
+    @apply border-neon bg-neon font-bold text-ink hover:bg-pump disabled:hover:bg-neon;
+  }
+
+  .btn-danger {
+    @apply border-down text-down hover:bg-down hover:text-ink;
+  }
+
+  .label {
+    @apply text-[10px] uppercase tracking-[0.2em] text-mute;
+  }
+
+  /* Hard 1px hairline used to separate rows — flat, no shadow. */
+  .rule {
+    @apply border-t-2 border-edge;
+  }
+}
