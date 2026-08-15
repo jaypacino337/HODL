@@ -22,7 +22,9 @@ surprise on launch day.
 
 **Piece 1 needs no program.** Create a collection, create 10 assets, transfer them.
 "Free" is not "a paid mint priced at zero" — it is the absence of a price concept
-entirely. It is currently unbuilt by request.
+entirely. Built: `scripts/honorary-mint.ts`. It validates all 10 entries before sending
+anything, and writes a receipt after every mint so a crash halfway cannot lose the
+record of what already went out.
 
 **Piece 2's launch is one transaction.** Everything — deploy, config, pool seeding,
 treasury creation — happens days earlier and is verified on devnet first. Launch day is
@@ -122,9 +124,11 @@ After that, launch is `npm run launch`.
 
 ## Still needed from you
 
-1. **True pixel resolution of the art** — if the 1024×1024 PNGs are upscales of
-   e.g. 64×64 sources, storing the originals is visually identical (everything renders
-   `image-rendering: pixelated`) and cuts permanent storage from ~4.0 SOL to ~0.1.
+1. **The art itself**, so `price-upload.ts` can price it exactly. On synthetic
+   1024×1024 pixel PNGs it measured ~33 MiB for 1,000 files (~0.25 SOL). If yours are
+   upscales of e.g. 64×64 sources, storing the originals is visually identical
+   (everything renders `image-rendering: pixelated`) and costs a fraction of that —
+   the script prints the comparison for your actual files.
 2. **`$PUMPBROKER` mint address and decimals** — everything assumes 6. If it is 9,
    change one constant in `config/index.ts`.
 3. **Which 10 art indices** went out as honoraries.
