@@ -7,16 +7,20 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build:site",
+    "build": "npm run build:crowdy",
     "build:site": "npm run build --workspace packages/pumpbrokers-site",
-    "dev": "npm run dev --workspace packages/pumpbrokers-site",
+    "dev": "npm run dev:crowdy",
     "test": "npm run test:unit && npm run check:programs",
     "test:unit": "node --test \"tests/unit/*.test.ts\"",
     "check:programs": "cargo check --workspace",
     "typecheck": "npm run typecheck --workspace packages/pumpbrokers-site",
     "verify": "node scripts/verify-deployment.ts",
     "launch": "node scripts/set-active.ts --active true",
-    "rollback": "node scripts/set-active.ts --active false"
+    "rollback": "node scripts/set-active.ts --active false",
+    "build:crowdy": "npm run build --workspace packages/crowdy-site",
+    "dev:crowdy": "npm run dev --workspace packages/crowdy-site",
+    "build:pumpbrokers": "npm run build --workspace packages/pumpbrokers-site",
+    "dev:pumpbrokers": "npm run dev --workspace packages/pumpbrokers-site"
   },
   "engines": {
     "node": ">=18.18.0"

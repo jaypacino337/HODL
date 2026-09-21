@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: dark;
+  }
+
+  html,
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+  }
+
+  body {
+    /* One soft radial wash behind everything. Flat colour would read as cheap at this
+       size; a full gradient sheet would fight the cards. */
+    background-image: radial-gradient(
+      900px 500px at 50% -10%,
+      rgba(124, 92, 255, 0.16),
+      transparent 70%
+    );
+    background-repeat: no-repeat;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    @apply bg-accent text-white;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border border-edge bg-surface shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-edge
+           bg-raised px-4 py-2.5 text-sm font-medium text-text
+           transition-colors hover:border-accent/60 hover:bg-edge
+           disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-edge
+           disabled:hover:bg-raised;
+  }
+
+  .btn-primary {
+    @apply border-transparent bg-accent text-white hover:bg-accent-dim
+           disabled:hover:bg-accent;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:bg-raised;
+  }
+
+  .input {
+    @apply w-full rounded-xl border border-edge bg-bg px-3.5 py-2.5 text-sm
+           outline-none transition-colors placeholder:text-muted
+           focus:border-accent/70;
+  }
+
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-wider text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-edge
+           px-2.5 py-1 text-[11px] font-medium;
+  }
+}

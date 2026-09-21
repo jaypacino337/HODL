@@ -1,0 +1,26 @@
+[package]
+name = "crowdy-campaign"
+version = "0.1.0"
+description = "Crowdy.fun — holder-gated, all-or-nothing crowdfunding on Solana."
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib", "lib"]
+name = "crowdy_campaign"
+
+[features]
+default = []
+cpi = ["no-entrypoint"]
+no-entrypoint = []
+no-idl = []
+no-log-ix-name = []
+idl-build = ["anchor-lang/idl-build", "anchor-spl/idl-build"]
+
+[dependencies]
+# init-if-needed: `contribute` tops up an existing Contribution rather than creating a
+# second one, so a backer's refund is always a single call. The re-initialization
+# hazard the feature warns about does not apply: the account is seeded by
+# (campaign, backer), it is never closed, and `contribute` refuses to touch one that
+# has already been refunded.
+anchor-lang = { workspace = true, features = ["init-if-needed"] }
+anchor-spl = { workspace = true }
