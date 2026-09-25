@@ -1,23 +1,21 @@
 {
-  "name": "@attn/engine",
+  "name": "@board/engine",
   "version": "0.1.0",
   "private": true,
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
+  "main": "dist/engine/src/index.js",
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "start": "ts-node src/index.ts",
+    "start": "ts-node --transpile-only src/index.ts",
     "dev": "ts-node-dev --respawn src/index.ts"
   },
   "dependencies": {
-    "@attn/fee-harvester": "^0.1.0",
-    "@attn/shared": "^0.1.0",
-    "@solana/web3.js": "^1.95.3",
+    "@anthropic-ai/sdk": "^0.128.0",
+    "@board/shared": "^0.1.0",
     "@supabase/supabase-js": "^2.45.4",
-    "bs58": "^5.0.0",
     "cors": "^2.8.5",
     "express": "^4.19.2",
-    "tweetnacl": "^1.0.3"
+    "viem": "^2.21.0",
+    "zod": "^4.1.0"
   },
   "devDependencies": {
     "@types/cors": "^2.8.17",

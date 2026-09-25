@@ -1,57 +1,42 @@
-# Read before going live
+# THE BOARDROOM — Disclaimer & risk notes
 
-This repo is a working reference implementation. Deploying it for real
-people and real money is **your** decision and responsibility.
+**Read before deploying with real funds or launching $BOARD.**
 
-## Buyback marketing is securities bait
+## What this repository is
 
-"Hold the token; fees and revenue buy it back on a schedule" is precisely
-the kind of value-accrual language securities regulators quote back at
-projects. How you market this matters as much as how it works. Get real
-legal advice before launch, not after.
+A working implementation of an AI-governed public treasury product: live
+demo mode, a real orchestration engine, tested but **unaudited** contracts.
+Nothing is deployed, no token exists, and no balances shown anywhere are
+real unless the connected engine reads them from a chain.
 
-## Paying people to post is regulated
+## Legal / regulatory
 
-The attention-rewards loop pays people for promoting a tradeable asset.
-In the US that triggers disclosure obligations (FTC endorsement rules; and
-for securities, §17(b) "touting" liability applies to paid promotion that
-isn't disclosed). The terminal's public leaderboard helps, but the people
-posting must disclose they're compensated. Undisclosed shill armies are
-how projects and promoters both get charged.
+Launching a token whose treasury is actively managed — by anyone or
+anything — can implicate securities, commodities, investment-company and
+money-transmission law depending on jurisdiction and design. "AI decided"
+is not a legal defense; the operator remains responsible for every
+execution. Airdrops, buybacks and stock-token exposure each carry their own
+regulatory weight. **Get qualified counsel for every jurisdiction you'd
+serve before going live.** Nothing in this repository is legal, financial or
+investment advice; nothing is an offer to sell any instrument.
 
-## Airdrop language
+## Product honesty rules (enforced in code, keep them)
 
-The terminal deliberately says "eligibility tracking — never a promise."
-Keep it that way everywhere you communicate. Promising a future token
-distribution creates both expectations and legal exposure; walking back a
-promised airdrop after people worked for points is how communities die and
-lawsuits start.
+- Launch states derive from real configuration; the site never claims more.
+- Demo data renders only under an explicit simulation banner, locally.
+- Receipts are never simulated. No receipt, no execution — period.
+- Holder voting is reported inactive until the snapshot system works.
+- Locked agent allocations are governance alignment, **not** equity or
+  company ownership, and the copy must never say otherwise.
 
-## Ads are publisher liability
+## Technical risks
 
-You're selling ad space with no review before payment. The admin reject
-endpoint exists — use it. Scam links, impersonation, and malware in your
-ad slots become your problem reputationally and possibly legally. Consider
-pre-moderation (flip the flow: approve, then charge).
+- Unaudited Solidity; model-driven proposals (bounded by policy, but models
+  err); oracle/pricing inputs for non-USDG assets; keeper key compromise
+  (mitigated, not eliminated, by on-chain limits); Robinhood Chain and Pons
+  V2 are young infrastructure.
 
-## Custody and key risk
+## Treasury risk
 
-The creator wallet is the treasury: fees, buyback pool, rewards pool, ad
-revenue — one keypair, sitting in Railway env vars. Anyone with project
-access holds the bankroll. Minimal collaborator access; sweep excess to
-cold storage; the creator wallet itself can never be rotated.
-
-## Dependency honesty
-
-pump.fun's SDKs and fee program are theirs to change (they've shipped
-breaking changes before). The scanner leans on free public APIs
-(DexScreener, CoinGecko) with no SLA. The engine degrades gracefully —
-skipped buybacks, source status flags — but "degraded and honest" still
-needs you watching the logs.
-
-## Operational honesty
-
-The site advertises exact splits (50/50 fees, 90/10 revenue) and prints
-every movement with tx signatures. Quietly diverging from advertised
-splits while collecting ad money and promotion labor is fraud in most
-places. Keep the ledger truthful.
+The board can be wrong in public. Treasuries can lose value. The permanent
+reserve, caps and thresholds bound the blast radius — they do not remove it.

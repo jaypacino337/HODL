@@ -1,23 +1,22 @@
-import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type {
-  Ad,
-  AttentionRank,
-  Epoch,
-  EpochPayout,
-  PostStatus,
-  ScanItem,
-  SocialPost,
-  SourceStatus,
-} from "@attn/shared";
-
-/** Truncate a numeric string to integer lamports (Postgres numeric can carry decimals). */
-const int = (v: unknown) => String(v ?? "0").split(".")[0];
+  AgentVote,
+  BoardMessage,
+  BoardSession,
+  ExecutionIntent,
+  Proposal,
+  Receipt,
+  TreasurySnapshot,
+} from "@board/shared";
 
 /**
- * Thin Supabase wrapper. The engine connects with the service-role key so
- * writes bypass RLS; the tables themselves are world-readable.
+ * Supabase persistence. Service-role key, server-side only — the tables are
+ * world-readable via RLS but only this process writes (see
+ * supabase/migrations/0001_init.sql). Everything the spec requires persisted
+ * flows through here: sessions, stages, snapshots, messages, proposals,
+ * revisions, votes, holder data, intents, receipts, violations, versions.
  */
-export class AttnDb {
+export class BoardDb {
   private sb: SupabaseClient;
 
   constructor(url: string, serviceRoleKey: string) {
@@ -26,374 +25,207 @@ export class AttnDb {
     });
   }
 
-  // ── fee engine ────────────────────────────────────────────────────────
-
-  async insertFeeClaim(source: string, lamports: string, txSignature: string): Promise<void> {
-    const { error } = await this.sb.from("fee_claims").insert({ source, lamports, tx_signature: txSignature });
-    if (error) throw new Error(`insertFeeClaim: ${error.message}`);
+  private async ins(table: string, row: Record<string, unknown>): Promise<void> {
+    const { error } = await this.sb.from(table).insert(row);
+    if (error) throw new Error(`insert ${table}: ${error.message}`);
   }
 
-  async lastClaimAt(): Promise<string | null> {
-    const { data, error } = await this.sb
-      .from("fee_claims")
-      .select("claimed_at")
-      .order("claimed_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) throw new Error(`lastClaimAt: ${error.message}`);
-    return data?.claimed_at ?? null;
-  }
-
-  async insertLedger(pool: "buyback" | "rewards" | "dev", lamports: bigint, reason: string, ref?: string): Promise<void> {
-    const { error } = await this.sb
-      .from("ledger")
-      .insert({ pool, lamports: lamports.toString(), reason, ref: ref ?? null });
-    if (error) throw new Error(`insertLedger: ${error.message}`);
-  }
-
-  /** Net lamports currently earmarked for a pool (can never go below 0 by construction). */
-  async poolBalance(pool: "buyback" | "rewards" | "dev"): Promise<bigint> {
-    const { data, error } = await this.sb.from("ledger").select("lamports").eq("pool", pool);
-    if (error) throw new Error(`poolBalance: ${error.message}`);
-    return (data ?? []).reduce((sum, r) => sum + BigInt(int(r.lamports)), 0n);
-  }
-
-  async insertBuyback(row: {
-    lamportsSpent: string;
-    tokensBought: string | null;
-    txSignature: string | null;
-    status: "sent" | "failed" | "skipped";
-    note?: string;
-  }): Promise<void> {
-    const { error } = await this.sb.from("buybacks").insert({
-      lamports_spent: row.lamportsSpent,
-      tokens_bought: row.tokensBought,
-      tx_signature: row.txSignature,
-      status: row.status,
-      note: row.note ?? null,
+  // sessions
+  async createSession(s: BoardSession): Promise<void> {
+    await this.ins("sessions", {
+      id: s.id,
+      number: s.number,
+      stage: s.stage,
+      stage_started_at: s.stageStartedAt,
+      started_at: s.startedAt,
+      snapshot_id: s.snapshotId,
+      kind: s.kind,
+      model_id: s.modelId,
+      prompt_version_hash: s.promptVersionHash,
     });
-    if (error) throw new Error(`insertBuyback: ${error.message}`);
   }
 
-  async recentBuybacks(limit = 10) {
+  async setStage(sessionId: string, stage: string): Promise<void> {
+    const { error } = await this.sb
+      .from("sessions")
+      .update({ stage, stage_started_at: new Date().toISOString() })
+      .eq("id", sessionId);
+    if (error) throw new Error(`setStage: ${error.message}`);
+  }
+
+  async lastSessionNumber(): Promise<number> {
     const { data, error } = await this.sb
-      .from("buybacks")
-      .select("*")
-      .order("executed_at", { ascending: false })
-      .limit(limit);
-    if (error) throw new Error(`recentBuybacks: ${error.message}`);
-    return data ?? [];
-  }
-
-  async recentClaims(limit = 10) {
-    const { data, error } = await this.sb
-      .from("fee_claims")
-      .select("*")
-      .order("claimed_at", { ascending: false })
-      .limit(limit);
-    if (error) throw new Error(`recentClaims: ${error.message}`);
-    return data ?? [];
-  }
-
-  // ── epochs ────────────────────────────────────────────────────────────
-
-  private static toEpoch(row: any): Epoch {
-    return {
-      id: Number(row.id),
-      startsAt: row.starts_at,
-      endsAt: row.ends_at,
-      status: row.status,
-      rewardsPoolLamports: int(row.rewards_pool_lamports),
-    };
-  }
-
-  async getOpenEpoch(): Promise<Epoch | null> {
-    const { data, error } = await this.sb
-      .from("epochs")
-      .select("*")
-      .eq("status", "open")
-      .order("id", { ascending: false })
+      .from("sessions")
+      .select("number")
+      .order("number", { ascending: false })
       .limit(1)
       .maybeSingle();
-    if (error) throw new Error(`getOpenEpoch: ${error.message}`);
-    return data ? AttnDb.toEpoch(data) : null;
+    if (error) throw new Error(`lastSessionNumber: ${error.message}`);
+    return data ? Number(data.number) : 0;
   }
 
-  async createEpoch(endsAt: Date): Promise<Epoch> {
+  async currentSession(): Promise<Record<string, unknown> | null> {
     const { data, error } = await this.sb
-      .from("epochs")
-      .insert({ ends_at: endsAt.toISOString() })
+      .from("sessions")
       .select("*")
-      .single();
-    if (error) throw new Error(`createEpoch: ${error.message}`);
-    return AttnDb.toEpoch(data);
+      .order("number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error) throw new Error(`currentSession: ${error.message}`);
+    return data ?? null;
   }
 
-  async creditEpochRewards(epochId: number, current: string, lamports: bigint): Promise<void> {
-    const next = (BigInt(int(current)) + lamports).toString();
-    const { error } = await this.sb.from("epochs").update({ rewards_pool_lamports: next }).eq("id", epochId);
-    if (error) throw new Error(`creditEpochRewards: ${error.message}`);
+  async saveSnapshot(s: TreasurySnapshot): Promise<void> {
+    await this.ins("treasury_snapshots", {
+      id: s.id,
+      taken_at: s.takenAt,
+      chain_id: s.chainId,
+      treasury_address: s.treasuryAddress,
+      balances: s.balances,
+      total_usd: s.totalUsd,
+      available_usd: s.availableUsd,
+      reserved_liabilities_usd: s.reservedLiabilitiesUsd,
+      recent_revenue_usd: s.recentRevenueUsd,
+      previous_allocations: s.previousAllocations,
+      policy_version: s.policyVersion,
+      verified: s.verified,
+    });
   }
 
-  async markEpochPaid(epochId: number): Promise<void> {
-    const { error } = await this.sb.from("epochs").update({ status: "paid" }).eq("id", epochId);
-    if (error) throw new Error(`markEpochPaid: ${error.message}`);
+  // messages
+  async saveMessage(m: BoardMessage): Promise<void> {
+    await this.ins("messages", {
+      id: m.id,
+      session_id: m.sessionId,
+      seq: m.seq,
+      stage: m.stage,
+      kind: m.kind,
+      agent_id: m.agentId,
+      user_wallet: m.userWallet,
+      ref_proposal_id: m.refProposalId,
+      body: m.body,
+      at: m.at,
+    });
   }
 
-  async insertEpochPayouts(payouts: EpochPayout[]): Promise<void> {
-    if (payouts.length === 0) return;
-    const { error } = await this.sb.from("epoch_payouts").insert(
-      payouts.map((p) => ({
-        epoch_id: p.epochId,
-        wallet: p.wallet,
-        points: p.points,
-        amount_lamports: p.amountLamports,
-        tx_signature: p.txSignature,
-        status: p.status,
-      }))
-    );
-    if (error) throw new Error(`insertEpochPayouts: ${error.message}`);
-  }
-
-  // ── attention posts ───────────────────────────────────────────────────
-
-  private static toPost(row: any): SocialPost {
-    return {
-      id: Number(row.id),
-      wallet: row.wallet,
-      url: row.url,
-      status: row.status,
-      points: Number(row.points),
-      submittedAt: row.submitted_at,
-      reviewedAt: row.reviewed_at ?? null,
-      note: row.note ?? null,
-    };
-  }
-
-  async insertPost(wallet: string, url: string, signature: string, epochId: number | null): Promise<SocialPost> {
+  async messagesSince(sessionId: string, afterSeq: number): Promise<BoardMessage[]> {
     const { data, error } = await this.sb
-      .from("social_posts")
-      .insert({ wallet, url, signature, epoch_id: epochId })
+      .from("messages")
       .select("*")
-      .single();
-    if (error) {
-      if (error.code === "23505") throw new Error("that post has already been submitted");
-      throw new Error(`insertPost: ${error.message}`);
-    }
-    return AttnDb.toPost(data);
-  }
-
-  async reviewPost(id: number, status: PostStatus, points: number, note?: string): Promise<void> {
-    const { error } = await this.sb
-      .from("social_posts")
-      .update({ status, points, note: note ?? null, reviewed_at: new Date().toISOString() })
-      .eq("id", id);
-    if (error) throw new Error(`reviewPost: ${error.message}`);
-  }
-
-  async postsByWallet(wallet: string, limit = 20): Promise<SocialPost[]> {
-    const { data, error } = await this.sb
-      .from("social_posts")
-      .select("*")
-      .eq("wallet", wallet)
-      .order("submitted_at", { ascending: false })
-      .limit(limit);
-    if (error) throw new Error(`postsByWallet: ${error.message}`);
-    return (data ?? []).map(AttnDb.toPost);
-  }
-
-  async pendingPosts(limit = 50): Promise<SocialPost[]> {
-    const { data, error } = await this.sb
-      .from("social_posts")
-      .select("*")
-      .eq("status", "pending")
-      .order("submitted_at", { ascending: true })
-      .limit(limit);
-    if (error) throw new Error(`pendingPosts: ${error.message}`);
-    return (data ?? []).map(AttnDb.toPost);
-  }
-
-  /** Approved points per wallet within one epoch (for payouts). */
-  async epochPoints(epochId: number): Promise<Map<string, number>> {
-    const { data, error } = await this.sb
-      .from("social_posts")
-      .select("wallet, points")
-      .eq("epoch_id", epochId)
-      .eq("status", "approved");
-    if (error) throw new Error(`epochPoints: ${error.message}`);
-    const map = new Map<string, number>();
-    for (const row of data ?? []) {
-      map.set(row.wallet, (map.get(row.wallet) ?? 0) + Number(row.points));
-    }
-    return map;
-  }
-
-  async leaderboard(epochId: number | null, limit = 25): Promise<AttentionRank[]> {
-    const { data, error } = await this.sb.from("attention_leaderboard").select("*").limit(limit);
-    if (error) throw new Error(`leaderboard: ${error.message}`);
-    const epoch = epochId !== null ? await this.epochPoints(epochId) : new Map<string, number>();
-    return (data ?? []).map((row) => ({
-      wallet: row.wallet,
-      lifetimePoints: Number(row.lifetime_points),
-      epochPoints: epoch.get(row.wallet) ?? 0,
-      approvedPosts: Number(row.approved_posts),
+      .eq("session_id", sessionId)
+      .gt("seq", afterSeq)
+      .order("seq", { ascending: true })
+      .limit(500);
+    if (error) throw new Error(`messagesSince: ${error.message}`);
+    return (data ?? []).map((r) => ({
+      id: r.id,
+      sessionId: r.session_id,
+      seq: Number(r.seq),
+      stage: r.stage,
+      kind: r.kind,
+      agentId: r.agent_id,
+      userWallet: r.user_wallet,
+      refProposalId: r.ref_proposal_id,
+      body: r.body,
+      at: r.at,
     }));
   }
 
-  // ── ads ───────────────────────────────────────────────────────────────
-
-  private static toAd(row: any): Ad {
-    return {
-      id: Number(row.id),
-      wallet: row.wallet,
-      headline: row.headline,
-      url: row.url,
-      days: Number(row.days),
-      priceLamports: int(row.price_lamports),
-      status: row.status,
-      bookingCode: row.booking_code,
-      paymentSignature: row.payment_signature ?? null,
-      startsAt: row.starts_at ?? null,
-      endsAt: row.ends_at ?? null,
-      createdAt: row.created_at,
-    };
+  // proposals
+  async saveProposal(p: Proposal): Promise<void> {
+    const { error } = await this.sb.from("proposals").upsert({
+      id: p.id,
+      session_id: p.sessionId,
+      agent_id: p.agentId,
+      revision: p.revision,
+      title: p.title,
+      action_type: p.actionType,
+      asset: p.asset,
+      recipient: p.recipient,
+      amount_usd: p.amountUsd,
+      pct_of_available: p.pctOfAvailable,
+      max_slippage_bps: p.maxSlippageBps,
+      expires_at: p.expiresAt,
+      expected_result: p.expectedResult,
+      primary_risk: p.primaryRisk,
+      supporting_data: p.supportingData,
+      status: p.status,
+      created_at: p.createdAt,
+      policy_violation: p.policyViolation ?? null,
+    });
+    if (error) throw new Error(`saveProposal: ${error.message}`);
   }
 
-  async insertAd(row: {
-    wallet: string;
-    headline: string;
-    url: string;
-    days: number;
-    priceLamports: string;
-    bookingCode: string;
-  }): Promise<Ad> {
-    const { data, error } = await this.sb
-      .from("ads")
-      .insert({
-        wallet: row.wallet,
-        headline: row.headline,
-        url: row.url,
-        days: row.days,
-        price_lamports: row.priceLamports,
-        booking_code: row.bookingCode,
-      })
-      .select("*")
-      .single();
-    if (error) throw new Error(`insertAd: ${error.message}`);
-    return AttnDb.toAd(data);
+  async savePolicyViolation(sessionId: string, proposalId: string, agentId: string, rule: string, ruleText: string): Promise<void> {
+    await this.ins("policy_violations", {
+      session_id: sessionId,
+      proposal_id: proposalId,
+      agent_id: agentId,
+      rule,
+      rule_text: ruleText,
+    });
   }
 
-  async getAd(id: number): Promise<Ad | null> {
-    const { data, error } = await this.sb.from("ads").select("*").eq("id", id).maybeSingle();
-    if (error) throw new Error(`getAd: ${error.message}`);
-    return data ? AttnDb.toAd(data) : null;
+  // votes
+  async saveVote(v: AgentVote): Promise<void> {
+    // duplicate prevention: PK (proposal_id, agent_id) — second vote errors
+    const { error } = await this.sb.from("agent_votes").insert({
+      proposal_id: v.proposalId,
+      agent_id: v.agentId,
+      choice: v.choice,
+      explanation: v.explanation,
+      cast_at: v.castAt,
+    });
+    if (error && !error.message.includes("duplicate")) throw new Error(`saveVote: ${error.message}`);
   }
 
-  async adByPaymentSignature(sig: string): Promise<Ad | null> {
-    const { data, error } = await this.sb.from("ads").select("*").eq("payment_signature", sig).maybeSingle();
-    if (error) throw new Error(`adByPaymentSignature: ${error.message}`);
-    return data ? AttnDb.toAd(data) : null;
+  // execution
+  async saveIntent(i: ExecutionIntent): Promise<void> {
+    const { error } = await this.sb.from("execution_intents").upsert({
+      id: i.id,
+      proposal_id: i.proposalId,
+      idempotency_key: i.idempotencyKey,
+      action_type: i.actionType,
+      asset: i.asset,
+      recipient: i.recipient,
+      amount_usd: i.amountUsd,
+      max_slippage_bps: i.maxSlippageBps,
+      expires_at: i.expiresAt,
+      simulated: i.simulated,
+      status: i.status,
+    });
+    if (error) throw new Error(`saveIntent: ${error.message}`);
   }
 
-  async activateAd(id: number, paymentSignature: string, days: number): Promise<void> {
-    const now = new Date();
-    const ends = new Date(now.getTime() + days * 24 * 60 * 60 * 1000);
-    const { error } = await this.sb
-      .from("ads")
-      .update({
-        status: "active",
-        payment_signature: paymentSignature,
-        starts_at: now.toISOString(),
-        ends_at: ends.toISOString(),
-      })
-      .eq("id", id);
-    if (error) throw new Error(`activateAd: ${error.message}`);
+  async saveReceipt(r: Receipt): Promise<void> {
+    const { error } = await this.sb.from("receipts").upsert({
+      proposal_id: r.proposalId,
+      tx_hash: r.txHash,
+      chain_id: r.chainId,
+      block_number: r.blockNumber,
+      ts: r.timestamp,
+      asset: r.asset,
+      amount_usd: r.amountUsd,
+      recipient: r.recipient,
+      agent_votes: r.agentVotes,
+      holder_tally: r.holderTally,
+      final_status: r.finalStatus,
+    });
+    if (error) throw new Error(`saveReceipt: ${error.message}`);
   }
 
-  async setAdStatus(id: number, status: Ad["status"]): Promise<void> {
-    const { error } = await this.sb.from("ads").update({ status }).eq("id", id);
-    if (error) throw new Error(`setAdStatus: ${error.message}`);
+  // chat + audit
+  async saveAudit(kind: string, detail: Record<string, unknown>): Promise<void> {
+    await this.ins("audit_log", { kind, detail });
   }
 
-  async activeAds(): Promise<Ad[]> {
-    const { data, error } = await this.sb
-      .from("ads")
-      .select("*")
-      .eq("status", "active")
-      .order("created_at", { ascending: false });
-    if (error) throw new Error(`activeAds: ${error.message}`);
-    return (data ?? []).map(AttnDb.toAd);
-  }
-
-  // ── scanner ───────────────────────────────────────────────────────────
-
-  async insertScan(items: ScanItem[], sources: SourceStatus[]): Promise<void> {
-    const { data, error } = await this.sb
-      .from("scans")
-      .insert({ sources: sources as any })
-      .select("id")
-      .single();
-    if (error) throw new Error(`insertScan: ${error.message}`);
-    if (items.length === 0) return;
-    const { error: itemErr } = await this.sb.from("scan_items").insert(
-      items.map((i) => ({
-        scan_id: data.id,
-        rank: i.rank,
-        source: i.source,
-        symbol: i.symbol,
-        name: i.name,
-        score: i.score,
-        price_usd: i.priceUsd,
-        change_24h: i.change24h,
-        volume_24h_usd: i.volume24hUsd,
-        url: i.url,
-      }))
-    );
-    if (itemErr) throw new Error(`insertScan items: ${itemErr.message}`);
-  }
-
-  async latestScan(): Promise<{ ranAt: string; items: ScanItem[]; sources: SourceStatus[] } | null> {
-    const { data, error } = await this.sb
-      .from("scans")
-      .select("id, ran_at, sources")
-      .order("ran_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-    if (error) throw new Error(`latestScan: ${error.message}`);
-    if (!data) return null;
-    const { data: items, error: itemErr } = await this.sb
-      .from("scan_items")
-      .select("*")
-      .eq("scan_id", data.id)
-      .order("rank", { ascending: true });
-    if (itemErr) throw new Error(`latestScan items: ${itemErr.message}`);
-    return {
-      ranAt: data.ran_at,
-      sources: (data.sources ?? []) as SourceStatus[],
-      items: (items ?? []).map((i) => ({
-        rank: Number(i.rank),
-        source: i.source,
-        symbol: i.symbol,
-        name: i.name,
-        score: Number(i.score),
-        priceUsd: i.price_usd !== null ? Number(i.price_usd) : null,
-        change24h: i.change_24h !== null ? Number(i.change_24h) : null,
-        volume24hUsd: i.volume_24h_usd !== null ? Number(i.volume_24h_usd) : null,
-        url: i.url ?? null,
-      })),
-    };
-  }
-
-  async platformTotals() {
-    const { data, error } = await this.sb.from("platform_totals").select("*").single();
-    if (error) throw new Error(`platformTotals: ${error.message}`);
-    return {
-      feesClaimedLamports: int(data.fees_claimed_lamports),
-      buybackSpentLamports: int(data.buyback_spent_lamports),
-      rewardsPaidLamports: int(data.rewards_paid_lamports),
-      adRevenueLamports: int(data.ad_revenue_lamports),
-      devPaidLamports: int(data.dev_paid_lamports),
-      buybackPoolLamports: int(data.buyback_pool_lamports),
-    };
+  async select(table: string, opts: { eq?: [string, unknown]; order?: string; limit?: number } = {}): Promise<any[]> {
+    let q = this.sb.from(table).select("*");
+    if (opts.eq) q = q.eq(opts.eq[0], opts.eq[1] as never);
+    if (opts.order) q = q.order(opts.order, { ascending: false });
+    q = q.limit(opts.limit ?? 100);
+    const { data, error } = await q;
+    if (error) throw new Error(`select ${table}: ${error.message}`);
+    return data ?? [];
   }
 }

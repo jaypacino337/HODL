@@ -1,354 +1,250 @@
-import express, { Express, Request, Response, NextFunction } from "express";
+import express, { type NextFunction, type Request, type Response } from "express";
 import cors from "cors";
-import { randomBytes } from "crypto";
-import { Connection } from "@solana/web3.js";
 import {
-  AttnConfig,
-  FeedEvent,
-  OverviewResponse,
-  PlayerResponse,
-  ScanResponse,
-  bookAdMessage,
-  submitPostMessage,
-  tierFor,
-} from "@attn/shared";
-import { AttnDb } from "./db";
-import { verifyWalletSignature, isValidPostUrl } from "./verify";
-import { autoVerifyPost } from "./points";
-import { verifyPaymentToTreasury } from "./payments";
-import { ensureOpenEpoch } from "./engine";
+  AGENTS,
+  AGENT_BY_ID,
+  EXECUTION_INACTIVE_BANNER,
+  UserReplySchema,
+  sanitizeUserMessage,
+  type BoardMessage,
+} from "@board/shared";
+import { deriveLaunchState, policyRef, type EngineConfig } from "./config";
+import { issueNonce, rateLimit, verifyChatSignature } from "./auth";
+import { attachClient, broadcast, clientCount, sendTo } from "./bus";
+import { quoteUserQuestion, runStructured } from "./agents";
+import { takeSnapshot } from "./treasury";
+import type { BoardDb } from "./db";
+import type { Orchestrator } from "./orchestrator";
+import { randomUUID } from "node:crypto";
 
 /**
- * The public terminal API.
- *
- *   GET  /health
- *   GET  /api/overview            — totals, pools, epoch, splits
- *   GET  /api/scan                — latest attention scan
- *   GET  /api/leaderboard         — lifetime + epoch attention ranks
- *   GET  /api/player/:wallet      — points, tier, submissions
- *   GET  /api/feed                — recent engine events (terminal tape)
- *   POST /api/attention/submit    — submit a signed X post for points
- *   GET  /api/ads                 — active ads
- *   POST /api/ads/book            — create a booking (signed)
- *   POST /api/ads/confirm         — confirm with the payment tx signature
- *   POST /api/admin/review-post   — approve/deny a post   (x-admin-key)
- *   POST /api/admin/review-ad     — reject an ad          (x-admin-key)
+ * The public Boardroom API + live SSE stream. All reads are public; the only
+ * writes are signed chat messages and admin-key operations. No secret ever
+ * leaves this process: model key, service-role key and keeper key are read
+ * from env and never serialized into any response or log.
  */
-export function buildApi(config: AttnConfig, connection: Connection, db: AttnDb): Express {
+
+export function buildApi(cfg: EngineConfig, db: BoardDb | null, orch: Orchestrator | null): express.Express {
   const app = express();
-  app.use(express.json());
-  app.use(
-    cors({
-      origin: config.corsOrigins === "*" ? true : config.corsOrigins.split(",").map((s) => s.trim()),
-    })
-  );
+  app.use(cors({ origin: cfg.corsOrigins }));
+  app.use(express.json({ limit: "16kb" }));
 
-  const wrap =
-    (fn: (req: Request, res: Response) => Promise<unknown>) =>
-    (req: Request, res: Response, _next: NextFunction) =>
-      fn(req, res).catch((err) => {
-        console.error(`[api] ${req.method} ${req.path} failed:`, (err as Error).message);
-        res.status(500).json({ error: "internal error" });
-      });
+  const wrap = (fn: (req: Request, res: Response) => Promise<void>) => (req: Request, res: Response, next: NextFunction) =>
+    fn(req, res).catch(next);
 
-  app.get("/health", (_req, res) => res.json({ ok: true }));
+  let chatSeq = 1_000_000; // user messages get their own seq space
+
+  app.get("/health", (_req, res) => {
+    res.json({ ok: true, launchState: deriveLaunchState(cfg), liveClients: clientCount() });
+  });
+
+  app.get("/api/state", (_req, res) => {
+    const launchState = deriveLaunchState(cfg);
+    res.json({
+      launchState,
+      executionBanner: ["EXECUTION_GUARDED", "FULLY_ACTIVE"].includes(launchState) ? null : EXECUTION_INACTIVE_BANNER,
+      holderVotingActive: cfg.holderSnapshotEnabled,
+      chainId: cfg.chainId,
+      agents: AGENTS,
+      policy: policyRef.current,
+    });
+  });
+
+  app.get("/api/policy", (_req, res) => res.json({ policy: policyRef.current }));
 
   app.get(
-    "/api/overview",
+    "/api/session/current",
     wrap(async (_req, res) => {
-      const [totals, epoch, scan, lastClaimAt] = await Promise.all([
-        db.platformTotals(),
-        ensureOpenEpoch(config, db),
-        db.latestScan(),
-        db.lastClaimAt(),
+      if (!db) return void res.json({ session: null, messages: [], proposals: [], votes: [] });
+      const session = await db.currentSession();
+      if (!session) return void res.json({ session: null, messages: [], proposals: [], votes: [] });
+      const [messages, proposals] = await Promise.all([
+        db.messagesSince(String(session.id), 0),
+        db.select("proposals", { eq: ["session_id", session.id], order: "created_at" }),
       ]);
-      const body: OverviewResponse = {
-        ticker: config.ticker,
-        mint: config.mint.toBase58(),
-        treasury: config.treasuryKeypair.publicKey.toBase58(),
-        totals: {
-          feesClaimedLamports: totals.feesClaimedLamports,
-          buybackSpentLamports: totals.buybackSpentLamports,
-          rewardsPaidLamports: totals.rewardsPaidLamports,
-          adRevenueLamports: totals.adRevenueLamports,
-          devPaidLamports: totals.devPaidLamports,
-        },
-        pools: {
-          buybackPoolLamports: totals.buybackPoolLamports,
-          rewardsPoolLamports: epoch.rewardsPoolLamports,
-        },
-        epoch: { ...epoch, msRemaining: Math.max(0, new Date(epoch.endsAt).getTime() - Date.now()) },
-        splits: {
-          feeBuybackShare: config.feeBuybackShare,
-          revenueBuybackShare: config.revenueBuybackShare,
-        },
-        adPriceLamportsPerDay: String(config.adPriceLamportsPerDay),
-        lastScanAt: scan?.ranAt ?? null,
-        lastClaimAt,
-      };
-      res.json(body);
+      const votes = (
+        await Promise.all(proposals.map((p) => db.select("agent_votes", { eq: ["proposal_id", p.id] })))
+      ).flat();
+      res.json({ session, messages, proposals, votes });
     })
   );
 
   app.get(
-    "/api/scan",
-    wrap(async (_req, res) => {
-      const scan = await db.latestScan();
-      const body: ScanResponse = scan ?? { ranAt: null, items: [], sources: [] };
-      res.json(body);
-    })
-  );
-
-  app.get(
-    "/api/leaderboard",
-    wrap(async (_req, res) => {
-      const epoch = await db.getOpenEpoch();
-      res.json({ leaderboard: await db.leaderboard(epoch?.id ?? null, 25) });
-    })
-  );
-
-  app.get(
-    "/api/player/:wallet",
+    "/api/agents/:id",
     wrap(async (req, res) => {
-      const wallet = req.params.wallet;
-      const [posts, epoch] = await Promise.all([db.postsByWallet(wallet), db.getOpenEpoch()]);
-      const ranks = await db.leaderboard(epoch?.id ?? null, 100);
-      const mine = ranks.find((r) => r.wallet === wallet);
-      const rankIndex = ranks.findIndex((r) => r.wallet === wallet);
-      const lifetime = mine?.lifetimePoints ?? posts.filter((p) => p.status === "approved").reduce((s, p) => s + p.points, 0);
-      const body: PlayerResponse = {
-        wallet,
-        lifetimePoints: lifetime,
-        epochPoints: mine?.epochPoints ?? 0,
-        tier: tierFor(lifetime),
-        rank: rankIndex >= 0 ? rankIndex + 1 : null,
-        posts,
-      };
-      res.json(body);
-    })
-  );
-
-  app.get(
-    "/api/feed",
-    wrap(async (_req, res) => {
-      const [claims, buybacks, scan] = await Promise.all([
-        db.recentClaims(8),
-        db.recentBuybacks(8),
-        db.latestScan(),
+      const agent = AGENT_BY_ID[req.params.id];
+      if (!agent) return void res.status(404).json({ error: "unknown agent" });
+      if (!db) return void res.json({ agent, proposals: [], votes: [], approvalRate: null });
+      const [proposals, votes] = await Promise.all([
+        db.select("proposals", { eq: ["agent_id", agent.id], order: "created_at" }),
+        db.select("agent_votes", { eq: ["agent_id", agent.id], order: "cast_at" }),
       ]);
-      const events: FeedEvent[] = [];
-      for (const c of claims) {
-        events.push({
-          at: c.claimed_at,
-          kind: "claim",
-          text: `CREATOR FEES CLAIMED +${(Number(c.lamports) / 1e9).toFixed(3)} SOL — 50% BUYBACK / 50% REWARDS`,
-        });
-      }
-      for (const b of buybacks) {
-        events.push({
-          at: b.executed_at,
-          kind: "buyback",
-          text:
-            b.status === "sent"
-              ? `BUYBACK EXECUTED — ${(Number(b.lamports_spent) / 1e9).toFixed(3)} SOL OFF THE MARKET`
-              : `BUYBACK ${String(b.status).toUpperCase()} — ${b.note ?? ""}`,
-        });
-      }
-      if (scan) {
-        events.push({
-          at: scan.ranAt,
-          kind: "scan",
-          text: `ATTENTION SCAN COMPLETE — ${scan.items.length} SIGNALS INDEXED`,
-        });
-      }
-      events.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-      res.json({ events: events.slice(0, 20) });
+      const decided = proposals.filter((p) => ["EXECUTED", "AWAITING_EXECUTION", "AWAITING_HOLDER_VOTE", "PASSED", "REJECTED", "FAILED"].includes(p.status));
+      const approved = decided.filter((p) => p.status !== "REJECTED");
+      res.json({
+        agent,
+        proposals,
+        votes,
+        approvalRate: decided.length ? approved.length / decided.length : null,
+      });
     })
   );
 
-  // ── attention points ──────────────────────────────────────────────────
+  app.get(
+    "/api/treasury",
+    wrap(async (_req, res) => {
+      const snapshot = await takeSnapshot(cfg).catch(() => null);
+      const history = db ? await db.select("treasury_snapshots", { order: "taken_at", limit: 30 }) : [];
+      res.json({ snapshot, history, policy: policyRef.current, configured: Boolean(cfg.rpcUrl && cfg.treasuryAddress) });
+    })
+  );
 
-  app.post(
-    "/api/attention/submit",
+  app.get(
+    "/api/proposals",
+    wrap(async (_req, res) => {
+      res.json({ proposals: db ? await db.select("proposals", { order: "created_at", limit: 200 }) : [] });
+    })
+  );
+
+  app.get(
+    "/api/receipts",
+    wrap(async (_req, res) => {
+      res.json({ receipts: db ? await db.select("receipts", { order: "ts", limit: 100 }) : [] });
+    })
+  );
+
+  // ── live stream ──────────────────────────────────────────────────────────
+  app.get(
+    "/live",
     wrap(async (req, res) => {
-      const { wallet, url, signature } = req.body ?? {};
-      if (typeof wallet !== "string" || typeof url !== "string" || typeof signature !== "string") {
-        return res.status(400).json({ error: "wallet, url and signature are required" });
-      }
-      if (!isValidPostUrl(url)) {
-        return res.status(400).json({ error: "url must be an x.com/twitter.com status link" });
-      }
-      if (!verifyWalletSignature(submitPostMessage(url, wallet), wallet, signature)) {
-        return res.status(401).json({ error: "signature does not verify" });
-      }
-
-      const epoch = await ensureOpenEpoch(config, db);
-      const post = await db.insertPost(wallet, url, signature, epoch.id).catch((err) => {
-        throw Object.assign(new Error(err.message), { public: true });
-      });
-
-      // Auto-verify through the X API when a token is configured.
-      let verdictNote = "queued for review — points land on approval";
-      try {
-        const verdict = await autoVerifyPost(config, url);
-        if (verdict) {
-          await db.reviewPost(post.id, verdict.verified ? "approved" : "denied", verdict.points, verdict.note);
-          verdictNote = verdict.verified
-            ? `auto-verified: +${verdict.points} attention points`
-            : `denied: ${verdict.note}`;
+      const detach = attachClient(res);
+      // replay anything the client missed (Last-Event-ID = last seen seq)
+      const lastId = Number(req.headers["last-event-id"] ?? 0);
+      if (db && lastId > 0) {
+        const session = await db.currentSession();
+        if (session) {
+          for (const m of await db.messagesSince(String(session.id), lastId)) {
+            sendTo(res, { type: "message", message: m }, m.seq);
+          }
         }
-      } catch (err) {
-        console.warn("[points] auto-verify unavailable, left pending:", (err as Error).message);
       }
-
-      res.json({ ok: true, id: post.id, note: verdictNote });
+      req.on("close", detach);
     })
   );
 
-  // ── ads ───────────────────────────────────────────────────────────────
-
-  app.get(
-    "/api/ads",
-    wrap(async (_req, res) => {
-      const ads = await db.activeAds();
-      res.json({
-        ads: ads.map((a) => ({ headline: a.headline, url: a.url, endsAt: a.endsAt })),
-        priceLamportsPerDay: String(config.adPriceLamportsPerDay),
-        treasury: config.treasuryKeypair.publicKey.toBase58(),
-      });
-    })
-  );
+  // ── chat (signed, sanitized, rate-limited) ───────────────────────────────
+  app.post("/api/auth/nonce", (req, res) => {
+    const wallet = String(req.body?.wallet ?? "");
+    if (!/^0x[0-9a-fA-F]{40}$/.test(wallet)) return void res.status(400).json({ error: "bad wallet" });
+    if (!rateLimit(`nonce:${req.ip}`, 20)) return void res.status(429).json({ error: "rate limited" });
+    res.json({ nonce: issueNonce(wallet), message: "sign the canonical chat message with this nonce" });
+  });
 
   app.post(
-    "/api/ads/book",
+    "/api/chat",
     wrap(async (req, res) => {
-      const { wallet, headline, url, days, signature } = req.body ?? {};
-      const nDays = Number(days);
-      if (
-        typeof wallet !== "string" ||
-        typeof headline !== "string" ||
-        typeof url !== "string" ||
-        typeof signature !== "string" ||
-        !Number.isInteger(nDays)
-      ) {
-        return res.status(400).json({ error: "wallet, headline, url, days and signature are required" });
+      const { wallet, nonce, signature, body } = req.body ?? {};
+      if (typeof wallet !== "string" || typeof nonce !== "string" || typeof signature !== "string" || typeof body !== "string") {
+        return void res.status(400).json({ error: "bad request" });
       }
-      if (headline.length < 4 || headline.length > 80) {
-        return res.status(400).json({ error: "headline must be 4-80 characters" });
+      if (!rateLimit(`ip:${req.ip}`, 10) || !rateLimit(`wallet:${wallet.toLowerCase()}`, 5)) {
+        return void res.status(429).json({ error: "rate limited" });
       }
-      if (nDays < 1 || nDays > 30) {
-        return res.status(400).json({ error: "days must be 1-30" });
-      }
-      try {
-        const u = new URL(url);
-        if (!["http:", "https:"].includes(u.protocol)) throw new Error();
-      } catch {
-        return res.status(400).json({ error: "url must be a valid http(s) link" });
-      }
-      if (!verifyWalletSignature(bookAdMessage(headline, nDays, wallet), wallet, signature)) {
-        return res.status(401).json({ error: "signature does not verify" });
+      const clean = sanitizeUserMessage(body);
+      if (!clean) return void res.status(400).json({ error: "empty message" });
+      if (!(await verifyChatSignature(wallet, nonce, body, signature))) {
+        return void res.status(401).json({ error: "signature verification failed" });
       }
 
-      const price = BigInt(config.adPriceLamportsPerDay) * BigInt(nDays);
-      const ad = await db.insertAd({
-        wallet,
-        headline,
-        url,
-        days: nDays,
-        priceLamports: price.toString(),
-        bookingCode: `ATTN-AD-${randomBytes(4).toString("hex").toUpperCase()}`,
-      });
-      res.json({
-        ok: true,
-        bookingId: ad.id,
-        bookingCode: ad.bookingCode,
-        priceLamports: price.toString(),
-        payTo: config.treasuryKeypair.publicKey.toBase58(),
-        instructions: `Send exactly ${Number(price) / 1e9} SOL to the treasury, then POST /api/ads/confirm with the transaction signature.`,
-      });
+      const session = db ? await db.currentSession() : null;
+      const m: BoardMessage = {
+        id: `u-${randomUUID().slice(0, 8)}`,
+        sessionId: session ? String(session.id) : "lobby",
+        seq: ++chatSeq,
+        stage: (session?.stage as BoardMessage["stage"]) ?? "ADJOURNED",
+        kind: "user_question",
+        agentId: null,
+        userWallet: wallet.toLowerCase(),
+        refProposalId: null,
+        body: clean,
+        at: new Date().toISOString(),
+      };
+      if (db) await db.saveMessage(m);
+      broadcast({ type: "message", message: m });
+      if (db) await db.saveAudit("chat_message", { wallet: wallet.toLowerCase(), len: clean.length });
+      res.json({ ok: true, id: m.id });
+
+      // agent reply — bounded globally, only when the board is live
+      if (cfg.anthropicKeyPresent && db && rateLimit("global:agent-replies", 6, 3)) {
+        const named = AGENTS.find((a) => clean.toUpperCase().includes(a.name));
+        const agent = named ?? AGENTS[Math.floor(Math.random() * AGENTS.length)];
+        const snapshot = await takeSnapshot(cfg).catch(() => null);
+        if (snapshot) {
+          try {
+            const out = await runStructured(cfg.modelId, agent.id, policyRef.current, snapshot, UserReplySchema, "user_reply", quoteUserQuestion(clean, wallet));
+            const reply: BoardMessage = { ...m, id: `r-${randomUUID().slice(0, 8)}`, seq: ++chatSeq, kind: "agent_reply", agentId: agent.id, userWallet: null, body: out.body, at: new Date().toISOString() };
+            await db.saveMessage(reply);
+            broadcast({ type: "message", message: reply });
+          } catch (err) {
+            await db.saveAudit("agent_reply_failed", { error: String(err) });
+          }
+        }
+      }
     })
   );
 
-  app.post(
-    "/api/ads/confirm",
-    wrap(async (req, res) => {
-      const { bookingId, txSignature } = req.body ?? {};
-      if (!Number.isInteger(Number(bookingId)) || typeof txSignature !== "string") {
-        return res.status(400).json({ error: "bookingId and txSignature are required" });
-      }
-      const ad = await db.getAd(Number(bookingId));
-      if (!ad) return res.status(404).json({ error: "booking not found" });
-      if (ad.status !== "pending_payment") {
-        return res.status(409).json({ error: `booking is ${ad.status}` });
-      }
-      if (await db.adByPaymentSignature(txSignature)) {
-        return res.status(409).json({ error: "that payment signature is already used" });
-      }
-
-      const verdict = await verifyPaymentToTreasury(
-        connection,
-        txSignature,
-        config.treasuryKeypair.publicKey,
-        BigInt(ad.priceLamports)
-      );
-      if (!verdict.ok) return res.status(402).json({ error: verdict.reason });
-
-      await db.activateAd(ad.id, txSignature, ad.days);
-
-      // Revenue split: 90% credited to buybacks, 10% paid out to the dev wallet.
-      const price = BigInt(ad.priceLamports);
-      const toBuyback = (price * BigInt(Math.round(config.revenueBuybackShare * 10_000))) / 10_000n;
-      const toDev = price - toBuyback;
-      await db.insertLedger("buyback", toBuyback, `ad revenue #${ad.id}`, txSignature);
-      await db.insertLedger("dev", toDev, `ad revenue #${ad.id}`, txSignature);
-      console.log(`[ads] ad #${ad.id} live — revenue split ${toBuyback} buyback / ${toDev} dev`);
-
-      res.json({ ok: true, status: "active", runsUntil: ad.days + " day(s) from now" });
-    })
-  );
-
-  // ── admin ─────────────────────────────────────────────────────────────
-
-  const requireAdmin = (req: Request, res: Response): boolean => {
-    if (req.header("x-admin-key") !== config.adminKey) {
-      res.status(401).json({ error: "bad admin key" });
+  // ── admin (key-guarded operational controls) ─────────────────────────────
+  const admin = (req: Request, res: Response): boolean => {
+    if (!cfg.adminKey || req.headers["x-admin-key"] !== cfg.adminKey) {
+      res.status(401).json({ error: "unauthorized" });
       return false;
     }
     return true;
   };
 
-  app.get(
-    "/api/admin/pending-posts",
+  app.post(
+    "/api/admin/session/start",
     wrap(async (req, res) => {
-      if (!requireAdmin(req, res)) return;
-      res.json({ posts: await db.pendingPosts() });
+      if (!admin(req, res)) return;
+      if (!orch) return void res.status(409).json({ error: "engine not fully configured (PREVIEW)" });
+      if (orch.running) return void res.status(409).json({ error: "session already running" });
+      void orch.runSession();
+      res.json({ ok: true, started: true });
     })
   );
 
   app.post(
-    "/api/admin/review-post",
+    "/api/admin/pause",
     wrap(async (req, res) => {
-      if (!requireAdmin(req, res)) return;
-      const { id, action, points, note } = req.body ?? {};
-      if (!Number.isInteger(Number(id)) || !["approve", "deny"].includes(action)) {
-        return res.status(400).json({ error: "id and action (approve|deny) required" });
+      if (!admin(req, res)) return;
+      cfg.paused = Boolean(req.body?.paused);
+      policyRef.current = { ...policyRef.current, emergencyPaused: cfg.paused };
+      broadcast({ type: "state", launchState: deriveLaunchState(cfg) });
+      if (db) await db.saveAudit("admin_pause", { paused: cfg.paused });
+      res.json({ ok: true, launchState: deriveLaunchState(cfg) });
+    })
+  );
+
+  app.post(
+    "/api/admin/policy",
+    wrap(async (req, res) => {
+      if (!admin(req, res)) return;
+      const patch = req.body?.patch ?? {};
+      // only known numeric/array keys may be patched; version bumps required
+      const allowed = new Set(Object.keys(policyRef.current));
+      for (const k of Object.keys(patch)) {
+        if (!allowed.has(k)) return void res.status(400).json({ error: `unknown policy key ${k}` });
       }
-      const pts = action === "approve" ? Math.max(1, Math.min(10_000, Number(points) || 100)) : 0;
-      await db.reviewPost(Number(id), action === "approve" ? "approved" : "denied", pts, note);
-      res.json({ ok: true });
+      policyRef.current = { ...policyRef.current, ...patch };
+      if (db) await db.saveAudit("admin_policy_patch", { patch });
+      res.json({ ok: true, policy: policyRef.current });
     })
   );
 
-  app.post(
-    "/api/admin/review-ad",
-    wrap(async (req, res) => {
-      if (!requireAdmin(req, res)) return;
-      const { id } = req.body ?? {};
-      if (!Number.isInteger(Number(id))) return res.status(400).json({ error: "id required" });
-      await db.setAdStatus(Number(id), "rejected");
-      res.json({ ok: true });
-    })
-  );
+  app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
+    console.error("[api]", err.message);
+    res.status(500).json({ error: "internal error" }); // never leak internals
+  });
 
   return app;
 }
