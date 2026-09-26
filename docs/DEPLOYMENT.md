@@ -1,73 +1,72 @@
-# Deployment — Supabase → Railway → Vercel
+# THE BOARDROOM — Deployment
 
-Deploy in this order; each step feeds the next its config.
+Order: Supabase → Railway → Vercel → contracts. Each step upgrades the
+launch state the site truthfully reports.
 
-## 0. Prerequisites
+## 1 · Supabase
 
-- The coin exists on pump.fun and you control the **creator wallet's**
-  keypair JSON (creator fees are keyed to it; no other wallet can claim).
-- That wallet holds ~0.1 SOL for transaction fees.
-- Node 18.18+, repo cloned, `npm install` run once.
+1. New project → SQL editor → run `supabase/migrations/0001_init.sql`.
+2. Copy Project URL → `SUPABASE_URL`, service_role key →
+   `SUPABASE_SERVICE_ROLE_KEY` (server-side only, never the website).
 
-## 1. Supabase (database)
+## 2 · Engine → Railway
 
-1. [supabase.com](https://supabase.com) → **New project**.
-2. SQL Editor → paste all of `supabase/migrations/0001_init.sql` → **Run**.
-3. Settings → API, copy:
-   - **Project URL** → `SUPABASE_URL`
-   - **service_role key** → `SUPABASE_SERVICE_ROLE_KEY` (server-side only)
-
-## 2. Railway (engine)
-
-1. [railway.app](https://railway.app) → **New Project → Deploy from GitHub repo**.
-2. Build command: `npm install && npm run build --workspace packages/shared --workspace packages/fee-harvester`
-   Start command: `npm run start --workspace packages/engine`
-   (or let it pick up `packages/engine/railway.json`).
-3. Variables — copy `.env.example` and fill in:
-   - `RPC_URL` — real RPC (free [Helius](https://helius.dev) key recommended)
-   - `MINT_ADDRESS`, `TICKER`
-   - `TREASURY_KEYPAIR` — the creator wallet's raw JSON array `[12,34,...]`
-   - `DEV_WALLET` — where the 10% development share goes
+1. New service from this repo (`packages/engine/railway.json` supplies the
+   start command).
+2. Variables (see `.env.example`):
+   - `ANTHROPIC_API_KEY` — the board's model access (server-only)
    - `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`
-   - `ADMIN_KEY` — long random string; it guards post/ad review
-   - Optional but recommended:
-     - `X_BEARER_TOKEN` — X API v2 token → auto-verified, engagement-weighted points
-     - `NEWS_API_KEY` — newsapi.org → news source live on the scanner
-     - `npm i @pump-fun/pump-sdk @pump-fun/pump-swap-sdk -w packages/engine`
-       → real fee claims and buyback execution (without them those steps
-       log+record `skipped` and funds stay pooled)
-4. Networking → **Generate Domain** → that's the API. `GET /health` → `{"ok":true}`.
-5. Logs should show the four loops arming and a first scan storing items.
+   - `ADMIN_KEY` — long random string; guards session/pause/policy ops
+   - `CORS_ORIGINS` — your Vercel domain
+   - `CHAIN_RPC_URL`, `CHAIN_ID`, `TREASURY_ADDRESS`, `USDG_TOKEN_ADDRESS`,
+     `BOARD_TOKEN_ADDRESS`, `STOCK_TOKENS_JSON`, `TOKEN_PRICES_JSON` —
+     read-only treasury snapshots (no session runs without them: the board
+     never argues from invented balances)
+   - `SESSION_INTERVAL_MINUTES` — cadence of automatic sessions
+3. `GET /health` → `{"ok":true,"launchState":"VOTING_LIVE"}` once model +
+   DB are configured. Convene manually:
+   `curl -X POST <api>/api/admin/session/start -H 'x-admin-key: …'`
 
-## 3. Vercel (terminal)
+## 3 · Website → Vercel
 
-1. **Add New → Project** → import the repo.
-2. **Root Directory**: `packages/website`.
-3. Env vars: `NEXT_PUBLIC_API_URL` (Railway domain), `NEXT_PUBLIC_RPC_URL`,
-   `NEXT_PUBLIC_MINT_ADDRESS`.
-4. Deploy, point your domain, then set `CORS_ORIGINS` on Railway to it.
+1. Import the repo; the root `vercel.json` builds `packages/website` with
+   zero configuration. (Alternative: set Root Directory to
+   `packages/website`.)
+2. Optional env: `NEXT_PUBLIC_API_URL=<railway domain>` for live data +
+   chat. Without it the site is a truthful PREVIEW.
+3. Never set `NEXT_PUBLIC_DEMO_MODE=true` in production — it renders the
+   labeled simulated session for local demonstration only.
 
-## 4. Smoke test
+## 4 · Contracts → Robinhood Chain (Arbitrum Sepolia until public RPC)
 
-1. Terminal loads; scanner fills within the hour (immediately after engine
-   boot, in practice); tape scrolls; source status row shows
-   dexscreener/coingecko **live**.
-2. Connect a wallet → Your Terminal opens → submit an X post link → wallet
-   prompts for a **message signature** → row appears in Supabase
-   `social_posts` (auto-approved if `X_BEARER_TOKEN` is set, else pending).
-3. Approve pending posts:
-   `curl -X POST <api>/api/admin/review-post -H 'x-admin-key: …' -H 'content-type: application/json' -d '{"id":1,"action":"approve","points":250}'`
-4. Book a test ad for 1 day → pay the quoted SOL to the treasury → confirm
-   with the tx signature → ad renders in Adspace; `ledger` shows the 90/10
-   split.
-5. After fees accrue: Wire prints claims every 15 min, the buyback pool
-   arms, and a buyback executes on the next 4h tick.
+With [Foundry](https://book.getfoundry.sh), from `packages/contracts`
+(`forge build` compiles; the e2e suite in `e2e/` runs without Foundry):
 
-## Ops notes
+```bash
+# BoardVault — seat names + delegate identities, then one-shot 1%×5 funding
+forge create src/BoardVault.sol:BoardVault --rpc-url arbitrum_sepolia \
+  --private-key $KEY --constructor-args $BOARD_TOKEN \
+  '["BULL","BURN","DIVIDEND","VAULT","DEGEN"]' \
+  '[$D_BULL,$D_BURN,$D_DIVIDEND,$D_VAULT,$D_DEGEN]'
+cast send $BOARD_TOKEN "approve(address,uint256)" $VAULT $((5 * ONE_PCT))
+cast send $VAULT "fundSeats(uint256)" $ONE_PCT
 
-- **Restarts are safe** — all state lives in Supabase; epochs/pools resume.
-- **Buyback prerequisites missing?** Executions record `skipped` and the
-  pool keeps growing; nothing is lost.
-- **Epoch pays nothing?** No approved points that week — the pool rolls
-  into the next epoch automatically.
-- Guard `TREASURY_KEYPAIR` and `ADMIN_KEY` like the bankroll they are.
+# TreasuryExecutor — keeper + limits + one-way agent bans
+forge create src/TreasuryExecutor.sol:TreasuryExecutor --constructor-args $KEEPER ...
+cast send $EXECUTOR "setTokenLimits(address,uint256,uint256)" $USDG 5000e6 8000e6
+cast send $EXECUTOR "banAgentWallet(address)" $D_BULL   # × 5 delegates
+```
+
+Publish the verified addresses on `/token` only after they exist. Move the
+executor's owner to the protocol multisig and the keeper key into KMS before
+any real funds; see `docs/SECURITY.md` → Known gaps.
+
+## Go-live checklist
+
+- [ ] Migration applied; anon key can read, cannot write
+- [ ] Engine `launchState` correct at every config tier (PREVIEW → VOTING_LIVE → EXECUTION_GUARDED)
+- [ ] A full session ran end-to-end on testnet config and the record persisted
+- [ ] Executor limits + agent bans set on-chain; simulation path exercised
+- [ ] `packages/contracts/e2e` green; shared tests green; site builds
+- [ ] Legal review (AI-governed treasury + token = regulated territory in
+      many jurisdictions; see `docs/DISCLAIMER.md`)

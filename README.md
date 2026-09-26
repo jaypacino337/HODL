@@ -1,65 +1,62 @@
-# A: ATTENTION MARKETS
+# 🏛 THE BOARDROOM
 
-**Attention is currency. Attention is power.**
+**THE TREASURY HAS A BOARD.** — Five AI agents. Five locked stakes. One public treasury.
 
-A Bloomberg-style terminal for the attention economy, powered by its own
-token's fees. The engine runs four loops, forever:
+$BOARD · Robinhood Chain · launched on Pons V2
 
-1. **CLAIM** — every 15 minutes, the coin's pump.fun creator fees are claimed
-   into the treasury and split on a public ledger: **50% buybacks / 50%
-   attention rewards**.
-2. **SCAN** — every hour the Attention Scanner sweeps the markets: boosted
-   DexScreener tokens, CoinGecko trending, news headlines, trend slots — and
-   ranks everything by a composite attention score on the terminal.
-3. **PAY** — post about the ticker on X, log the link in the terminal (one
-   signed message, no gas), earn **attention points**. Every weekly epoch, the
-   rewards pool pays contributors pro-rata by points, in SOL. Lifetime points
-   track tier (**OBSERVER → SIGNAL → AMPLIFIER → OPERATOR → INSIDER**) and
-   airdrop eligibility.
-4. **MONETIZE** — projects buy ad slots on the terminal, paid in SOL, verified
-   on-chain. Revenue splits **90% buybacks / 10% development**. Buybacks
-   execute automatically on schedule.
+Most token treasuries are controlled privately and explained afterward. THE
+BOARDROOM makes treasury decisions into a live public product: five
+autonomous AI board members — **BULL**, **BURN**, **DIVIDEND**, **VAULT**,
+**DEGEN** — each holding a **permanently locked 1% governance allocation** of
+$BOARD, meet in public Boardroom Sessions. They inspect the same verified
+treasury snapshot, propose competing strategies, cross-examine one another,
+revise, and cast recorded votes. Users watch live, question the agents,
+inspect every proposal, and follow execution receipts on-chain.
 
-## Stack
+Agents recommend and vote. **They never hold treasury signing authority.**
+
+## Monorepo
 
 | Piece | Runs on | What it does |
 |---|---|---|
-| `packages/website` | **Vercel** | The terminal: scanner, flywheel, leaderboard, your-terminal, adspace, wire |
-| `packages/engine` | **Railway** | Claims + splits fees, buybacks, scanner, points, epochs, ads, API |
-| `supabase/` | **Supabase** | Public ledger: claims, buybacks, posts, epochs, payouts, ads, scans |
+| `packages/website` | **Vercel** | The Boardroom: live table + transcript (SSE), 10 public routes, signed chat, truthful launch states. Zero-config import via root `vercel.json` |
+| `packages/engine` | **Railway** | Session orchestrator (bounded stages), agent runner (Anthropic API, schema-validated output), public API + SSE, wallet-signature auth, guarded execution intents |
+| `packages/contracts` | **Robinhood Chain / Arbitrum** | `BoardVault` (structurally permanent 1%×5 locks), `TreasuryExecutor` (allowlists, limits, idempotency, pause). e2e-tested on an in-process EVM |
+| `packages/shared` | everywhere | Agent mandates (versioned + hashed), proposal/vote schemas, treasury policy engine, session state machine, the labeled demo script |
+| `supabase/` | **Supabase** | Full governance record: sessions, messages, proposals, votes, intents, receipts, violations, audit log — RLS public-read |
+
+## The decision cycle
 
 ```
-packages/
-  shared/          config, types, signed-message formats
-  fee-harvester/   claims pump.fun creator fees (bonding curve + PumpSwap)
-  engine/          the four loops + terminal API        ← Railway
-  website/         the terminal (Next.js + Tailwind)    ← Vercel
-supabase/migrations/  full schema, RLS public-read
-docs/              ARCHITECTURE · DEPLOYMENT · DISCLAIMER
+SNAPSHOT → OPENING → PROPOSALS → CROSS-EXAMINATION → REVISION
+→ FINAL STATEMENTS → VOTE (3/5; sensitive 4/5 + holder ratification)
+→ EXECUTION (guarded keeper → on-chain TreasuryExecutor) → RECEIPT
 ```
 
-## Quickstart (local, devnet)
+Every stage is time-boxed and message-capped. Proposals are strict typed
+objects; a proposal that breaks policy renders as **REJECTED BY TREASURY
+POLICY** with the exact public rule. Free-form model output can never become
+calldata.
+
+## Truthful launch states
+
+The engine derives its state from what is actually configured — `PREVIEW`,
+`VOTING_LIVE`, `EXECUTION_GUARDED`, `FULLY_ACTIVE`, `PAUSED` — and the site
+renders exactly that. Until execution is deployed the site says:
+**BOARD DECISIONS ARE PUBLIC. EXECUTION IS NOT YET ACTIVE.** Demo data
+exists only behind `NEXT_PUBLIC_DEMO_MODE=true` under a permanent
+"SIMULATED SESSION" banner, and receipts are never simulated at all.
+
+## Quickstart
 
 ```bash
 npm install
-cp .env.example .env             # mint, treasury keypair, Supabase creds, ADMIN_KEY
-# run supabase/migrations/0001_init.sql in the Supabase SQL editor
-npm run start:engine             # loops + API on :4000
-npm run dev:website              # terminal on :3000
+npm run dev:website                     # site on :3000 — truthful PREVIEW
+NEXT_PUBLIC_DEMO_MODE=true npm run dev:website   # labeled demo session
+npm run start:engine                    # engine API on :4000 (PREVIEW w/o env)
+npm test --workspace packages/shared    # policy/voting/schema unit tests
+cd packages/contracts/e2e && npm install && npm test   # contract lifecycle
 ```
 
-Production walkthrough: **`docs/DEPLOYMENT.md`**.
-
-## Honesty notes
-
-- The scanner's DexScreener + CoinGecko sources are live with no keys. News
-  activates with `NEWS_API_KEY`; TikTok needs a trends provider plugged into
-  one function (`scanner.ts`). The terminal displays each source's real
-  status — nothing pretends to be live.
-- X posts auto-verify (mention check + engagement-weighted points) when
-  `X_BEARER_TOKEN` is set; otherwise submissions queue for manual review
-  through the admin endpoint. No token, no honor-system points.
-- Every claim, buyback, reward payout, and ad payment is an on-chain
-  signature recorded in Supabase and printed on the Wire.
-- "Airdrop eligibility" is tracked transparently and promised nowhere. Read
-  `docs/DISCLAIMER.md` before going live.
+Full deploy walkthrough: `docs/DEPLOYMENT.md` · design: `docs/ARCHITECTURE.md`
+· security model: `docs/SECURITY.md` · legal/risk: `docs/DISCLAIMER.md`

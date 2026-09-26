@@ -1,0 +1,7 @@
+{
+  "name": "@board/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "description": "THE BOARDROOM contracts: BoardVault (permanently locked agent allocations) + TreasuryExecutor (guarded execution). No npm build — Foundry, or the no-Foundry e2e suite in e2e/.",
+  "scripts": {}
+}
