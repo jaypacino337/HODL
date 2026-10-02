@@ -1,0 +1,194 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-paper font-sans text-ink antialiased;
+  min-height: 100vh;
+}
+
+/* film grain so the paper feels printed */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 1.6s steps(3) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-2%, 1%); }
+  66% { transform: translate(1%, -2%); }
+  100% { transform: translate(0, 0); }
+}
+
+::selection {
+  background: rgba(232, 93, 4, 0.25);
+}
+
+.wrap {
+  @apply mx-auto w-full max-w-6xl;
+  padding-left: clamp(16px, 4.4vw, 72px);
+  padding-right: clamp(16px, 4.4vw, 72px);
+}
+
+.eyebrow {
+  @apply font-mono uppercase text-mute;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+}
+
+.rule-h {
+  height: 1px;
+  background: rgba(21, 21, 20, 0.16);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-mono text-[0.72rem] font-medium uppercase tracking-[0.14em] transition;
+}
+.btn-ink {
+  @apply bg-ink text-paper;
+}
+.btn-ink:hover {
+  background: #000;
+}
+.btn-line {
+  @apply border border-ink/30 text-ink;
+}
+.btn-line:hover {
+  @apply border-ink;
+}
+
+/* cards on paper */
+.card {
+  @apply rounded-xl border bg-plate;
+  border-color: rgba(21, 21, 20, 0.14);
+}
+
+/* the dark program panel */
+.program {
+  @apply rounded-xl text-[#E9E7DF];
+  background: linear-gradient(180deg, #1e1e1c, #141413);
+  border: 1px solid rgba(247, 245, 239, 0.12);
+}
+
+/* plug chips */
+.plug-chip {
+  @apply inline-flex cursor-pointer select-none items-center gap-2 rounded-full border bg-plate px-3.5 py-2 font-mono text-[0.7rem] uppercase tracking-[0.1em] transition;
+  border-color: rgba(21, 21, 20, 0.22);
+  touch-action: none;
+}
+.plug-chip:hover {
+  border-color: var(--plug, #151514);
+  transform: translateY(-1px);
+}
+.plug-chip[data-active="true"] {
+  border-color: var(--plug, #151514);
+  box-shadow: inset 0 0 0 1px var(--plug, #151514);
+  color: #151514;
+}
+.plug-chip[data-dragging="true"] {
+  opacity: 0.4;
+}
+
+.plug-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 99px;
+  background: var(--plug, #151514);
+}
+
+/* the lamp */
+.lamp {
+  width: 10px;
+  height: 10px;
+  border-radius: 99px;
+  background: #3a3a36;
+  transition: background 0.25s, box-shadow 0.25s;
+}
+.lamp[data-on="true"] {
+  background: #f2b705;
+  box-shadow: 0 0 10px rgba(242, 183, 5, 0.9);
+  animation: lamp-blink 2.6s infinite;
+}
+@keyframes lamp-blink {
+  0%, 92%, 100% { opacity: 1; }
+  95% { opacity: 0.4; }
+}
+
+/* current flowing along SVG wires */
+.wire {
+  stroke-dasharray: 6 8;
+  animation: flow 0.9s linear infinite;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -14; }
+}
+
+/* drop hint */
+.socket-face[data-hint="true"] {
+  animation: hint 1.8s ease-in-out infinite;
+}
+@keyframes hint {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(232, 93, 4, 0); }
+  50% { box-shadow: 0 0 0 6px rgba(232, 93, 4, 0.14); }
+}
+.socket-face[data-over="true"] {
+  outline: 2px dashed #e85d04;
+  outline-offset: 6px;
+}
+
+/* pipeline stage states */
+.stage-node {
+  @apply rounded-lg border px-3 py-2 font-mono text-[0.66rem] uppercase tracking-[0.12em] transition-all duration-500 ease-out2;
+  border-color: rgba(247, 245, 239, 0.16);
+  color: #8f8e86;
+  background: rgba(247, 245, 239, 0.03);
+}
+.stage-node[data-state="active"] {
+  color: #f7f5ef;
+  border-color: #e85d04;
+  background: rgba(232, 93, 4, 0.12);
+}
+.stage-node[data-state="done"] {
+  color: #b9b8b1;
+  border-color: rgba(247, 245, 239, 0.3);
+}
+
+.caption-step {
+  @apply transition-all duration-500 ease-out2;
+  opacity: 0.26;
+  transform: translateY(0);
+}
+.caption-step[data-state="active"] {
+  opacity: 1;
+}
+
+/* numbers that tick in */
+.tick {
+  font-variant-numeric: tabular-nums;
+}
+
+/* thin scrollbar on code panes */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(21, 21, 20, 0.3) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+  .wire { animation: none; }
+  html { scroll-behavior: auto; }
+}
