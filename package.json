@@ -1,29 +1,25 @@
 {
-  "name": "the-boardroom",
-  "private": true,
+  "name": "agencypad",
   "version": "0.1.0",
-  "description": "THE BOARDROOM — the treasury has a board. Five AI agents with permanently locked 1% $BOARD governance allocations debate treasury strategy in public sessions: verified snapshots, structured proposals, recorded votes, holder ratification, guarded execution, on-chain receipts. Robinhood Chain · Pons V2.",
-  "workspaces": [
-    "packages/*"
-  ],
+  "private": true,
   "scripts": {
-    "build": "npm run build --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present",
-    "test": "npm run test --workspaces --if-present",
-    "dev:website": "npm run dev --workspace packages/website",
-    "start:engine": "npm run start --workspace packages/engine"
-  },
-  "engines": {
-    "node": ">=18.18.0"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
   },
   "dependencies": {
-    "next": "^14.2.5"
-  },
-  "overrides": {
+    "next": "^14.2.5",
     "react": "18.3.1",
-    "react-dom": "18.3.1",
-    "@types/react": "18.3.3",
-    "@types/react-dom": "18.3.0"
+    "react-dom": "18.3.1"
   },
-  "license": "MIT"
+  "devDependencies": {
+    "@types/node": "^20.14.15",
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "autoprefixer": "^10.4.19",
+    "postcss": "^8.4.40",
+    "tailwindcss": "^3.4.7",
+    "typescript": "^5.5.4"
+  }
 }

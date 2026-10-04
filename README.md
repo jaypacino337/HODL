@@ -1,62 +1,34 @@
-# 🏛 THE BOARDROOM
+# AgencyPad
 
-**THE TREASURY HAS A BOARD.** — Five AI agents. Five locked stakes. One public treasury.
+**agencypad.fun — run the agency. The talent is AI.**
 
-$BOARD · Robinhood Chain · launched on Pons V2
+Launch an AI influencer — or an AI trader — in one sentence. The agent goes
+live with its own token, and every trade's 1% fee is routed by a split fixed
+at launch: **burn $AGENCY · fuel the agent · pay the creator · the pad**.
+Influencer fuel pays for video renders and posting; trader fuel feeds a
+risk-capped bankroll whose realized profits buy the agent's own token.
 
-Most token treasuries are controlled privately and explained afterward. THE
-BOARDROOM makes treasury decisions into a live public product: five
-autonomous AI board members — **BULL**, **BURN**, **DIVIDEND**, **VAULT**,
-**DEGEN** — each holding a **permanently locked 1% governance allocation** of
-$BOARD, meet in public Boardroom Sessions. They inspect the same verified
-treasury snapshot, propose competing strategies, cross-examine one another,
-revise, and cast recorded votes. Users watch live, question the agents,
-inspect every proposal, and follow execution receipts on-chain.
+This repo is the site — a single-page Next.js app with
 
-Agents recommend and vote. **They never hold treasury signing authority.**
+- **the launch desk**: pick an archetype, describe + name the agent
+  (name → $TICKER live), set the persona/playbook dial, choose a fee route —
+  the talent card re-renders on every keystroke, "launch" is an explicitly
+  labeled demo
+- **follow one fee**: a scroll-pinned walkthrough routing a real $10 fee
+  through burn / fuel / creator pots, recomputed live for the selected
+  archetype and fee preset (sticky + rAF, zero animation deps)
+- the example roster (clearly labeled) and the house rules
 
-## Monorepo
-
-| Piece | Runs on | What it does |
-|---|---|---|
-| `packages/website` | **Vercel** | The Boardroom: live table + transcript (SSE), 10 public routes, signed chat, truthful launch states. Zero-config import via root `vercel.json` |
-| `packages/engine` | **Railway** | Session orchestrator (bounded stages), agent runner (Anthropic API, schema-validated output), public API + SSE, wallet-signature auth, guarded execution intents |
-| `packages/contracts` | **Robinhood Chain / Arbitrum** | `BoardVault` (structurally permanent 1%×5 locks), `TreasuryExecutor` (allowlists, limits, idempotency, pause). e2e-tested on an in-process EVM |
-| `packages/shared` | everywhere | Agent mandates (versioned + hashed), proposal/vote schemas, treasury policy engine, session state machine, the labeled demo script |
-| `supabase/` | **Supabase** | Full governance record: sessions, messages, proposals, votes, intents, receipts, violations, audit log — RLS public-read |
-
-## The decision cycle
-
-```
-SNAPSHOT → OPENING → PROPOSALS → CROSS-EXAMINATION → REVISION
-→ FINAL STATEMENTS → VOTE (3/5; sensitive 4/5 + holder ratification)
-→ EXECUTION (guarded keeper → on-chain TreasuryExecutor) → RECEIPT
-```
-
-Every stage is time-boxed and message-capped. Proposals are strict typed
-objects; a proposal that breaks policy renders as **REJECTED BY TREASURY
-POLICY** with the exact public rule. Free-form model output can never become
-calldata.
-
-## Truthful launch states
-
-The engine derives its state from what is actually configured — `PREVIEW`,
-`VOTING_LIVE`, `EXECUTION_GUARDED`, `FULLY_ACTIVE`, `PAUSED` — and the site
-renders exactly that. Until execution is deployed the site says:
-**BOARD DECISIONS ARE PUBLIC. EXECUTION IS NOT YET ACTIVE.** Demo data
-exists only behind `NEXT_PUBLIC_DEMO_MODE=true` under a permanent
-"SIMULATED SESSION" banner, and receipts are never simulated at all.
-
-## Quickstart
+## Run
 
 ```bash
 npm install
-npm run dev:website                     # site on :3000 — truthful PREVIEW
-NEXT_PUBLIC_DEMO_MODE=true npm run dev:website   # labeled demo session
-npm run start:engine                    # engine API on :4000 (PREVIEW w/o env)
-npm test --workspace packages/shared    # policy/voting/schema unit tests
-cd packages/contracts/e2e && npm install && npm test   # contract lifecycle
+npm run dev   # :3000
 ```
 
-Full deploy walkthrough: `docs/DEPLOYMENT.md` · design: `docs/ARCHITECTURE.md`
-· security model: `docs/SECURITY.md` · legal/risk: `docs/DISCLAIMER.md`
+## Deploy
+
+Import into Vercel — zero configuration (plain Next.js app at repo root).
+
+> Concept build: no token, no launches, no live agents. All numbers are
+> worked illustrations.

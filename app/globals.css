@@ -1,0 +1,222 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-studio font-sans text-chalk antialiased;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(ellipse 70% 42% at 18% -5%, rgba(255, 77, 141, 0.09), transparent 60%),
+    radial-gradient(ellipse 60% 40% at 92% 108%, rgba(61, 240, 140, 0.07), transparent 60%);
+  background-attachment: fixed;
+}
+
+/* studio grain */
+body::after {
+  content: "";
+  position: fixed;
+  inset: -50%;
+  pointer-events: none;
+  z-index: 60;
+  opacity: 0.045;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)'/%3E%3C/svg%3E");
+  animation: grain 1.6s steps(3) infinite;
+}
+@keyframes grain {
+  0% { transform: translate(0, 0); }
+  33% { transform: translate(-2%, 1%); }
+  66% { transform: translate(1%, -2%); }
+  100% { transform: translate(0, 0); }
+}
+
+::selection {
+  background: rgba(255, 77, 141, 0.4);
+}
+
+.wrap {
+  @apply mx-auto w-full max-w-6xl;
+  padding-left: clamp(16px, 4.4vw, 72px);
+  padding-right: clamp(16px, 4.4vw, 72px);
+}
+
+.eyebrow {
+  @apply font-mono uppercase text-fog;
+  font-size: 0.68rem;
+  letter-spacing: 0.22em;
+}
+
+.rule-h {
+  height: 1px;
+  background: rgba(240, 238, 234, 0.14);
+}
+
+.btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-full px-5 py-2.5 font-mono text-[0.72rem] font-semibold uppercase tracking-[0.14em] transition;
+}
+.btn-chalk {
+  @apply bg-chalk text-studio;
+}
+.btn-chalk:hover {
+  background: #fff;
+  transform: translateY(-1px);
+}
+.btn-line {
+  @apply border border-chalk/30 text-chalk;
+}
+.btn-line:hover {
+  @apply border-chalk/80;
+}
+.btn-sign {
+  background: linear-gradient(135deg, #ff4d8d, #ff7a45);
+  color: #14080c;
+  box-shadow: 0 0 26px rgba(255, 77, 141, 0.35);
+}
+.btn-sign:hover {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+}
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* cards */
+.card {
+  @apply rounded-2xl border;
+  background: linear-gradient(180deg, rgba(32, 32, 36, 0.8), rgba(20, 20, 23, 0.92));
+  border-color: rgba(240, 238, 234, 0.12);
+}
+.card-hover {
+  transition: transform 0.16s var(--ease-out), border-color 0.16s;
+}
+.card-hover:hover {
+  transform: translateY(-3px);
+  border-color: rgba(240, 238, 234, 0.3);
+}
+
+/* archetype pick cards */
+.arch-card {
+  @apply card cursor-pointer p-5 text-left transition;
+}
+.arch-card[data-active="true"] {
+  border-color: var(--arch, #fff);
+  box-shadow: 0 0 0 1px var(--arch, #fff), 0 0 34px color-mix(in srgb, var(--arch) 25%, transparent);
+}
+
+/* dial segmented control */
+.dial {
+  @apply flex rounded-full border border-chalk/15 bg-black/30 p-1;
+}
+.dial button {
+  @apply flex-1 rounded-full px-3 py-1.5 font-mono text-[0.64rem] uppercase tracking-[0.12em] text-fog transition;
+}
+.dial button[data-active="true"] {
+  background: var(--arch, #fff);
+  color: #101013;
+  font-weight: 700;
+}
+
+.field {
+  @apply w-full rounded-xl border border-chalk/20 bg-black/40 px-4 py-3 font-sans text-sm text-chalk outline-none transition;
+}
+.field:focus {
+  border-color: var(--arch, rgba(240, 238, 234, 0.6));
+}
+
+/* agent preview card — the "signed talent" card */
+.talent-card {
+  @apply relative overflow-hidden rounded-2xl border p-5;
+  border-color: color-mix(in srgb, var(--arch) 55%, transparent);
+  background:
+    radial-gradient(ellipse 120% 80% at 20% 0%, color-mix(in srgb, var(--arch) 16%, transparent), transparent 55%),
+    linear-gradient(180deg, #1c1c20, #121215);
+}
+.talent-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 30%, rgba(255, 255, 255, 0.06) 45%, transparent 60%);
+  transform: translateX(-120%);
+  animation: sheen 3.4s var(--ease-out) infinite;
+  pointer-events: none;
+}
+@keyframes sheen {
+  0%, 55% { transform: translateX(-120%); }
+  85%, 100% { transform: translateX(130%); }
+}
+
+.avatar {
+  @apply grid h-14 w-14 shrink-0 place-items-center rounded-xl font-mono text-xl font-bold;
+  background: color-mix(in srgb, var(--arch) 22%, #000);
+  color: var(--arch);
+  border: 1px solid color-mix(in srgb, var(--arch) 55%, transparent);
+}
+
+/* fee split bar */
+.split-bar {
+  @apply flex h-3 w-full overflow-hidden rounded-full;
+  background: rgba(240, 238, 234, 0.08);
+}
+.split-bar > div {
+  transition: width 0.5s var(--ease-out);
+}
+
+/* scroll flow stage nodes (dark panel on dark site → lighter panel) */
+.panel {
+  @apply rounded-2xl border;
+  background: linear-gradient(180deg, #1a1a1e, #121214);
+  border-color: rgba(240, 238, 234, 0.12);
+}
+.stage-node {
+  @apply rounded-lg border px-3 py-2 font-mono text-[0.64rem] uppercase tracking-[0.12em] transition-all duration-500;
+  border-color: rgba(240, 238, 234, 0.14);
+  color: #8e8d95;
+}
+.stage-node[data-state="active"] {
+  color: #f0eeea;
+  border-color: var(--arch, #ff4d8d);
+  background: color-mix(in srgb, var(--arch, #ff4d8d) 14%, transparent);
+}
+.stage-node[data-state="done"] {
+  color: #c7c5cf;
+  border-color: rgba(240, 238, 234, 0.3);
+}
+
+.wire {
+  stroke-dasharray: 6 8;
+  animation: flow 0.9s linear infinite;
+}
+@keyframes flow {
+  to { stroke-dashoffset: -14; }
+}
+
+.tick {
+  font-variant-numeric: tabular-nums;
+}
+
+/* roster marquee-ish chip row */
+.ticker-chip {
+  @apply inline-flex items-center gap-1.5 rounded-full border border-chalk/15 px-3 py-1 font-mono text-[0.66rem] uppercase tracking-[0.12em] text-fog;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(240, 238, 234, 0.25) transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  body::after { animation: none; }
+  .wire { animation: none; }
+  .talent-card::after { animation: none; }
+  html { scroll-behavior: auto; }
+}
