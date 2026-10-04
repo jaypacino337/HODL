@@ -18,8 +18,10 @@ export interface LaunchState {
 export function LaunchDemo({ s, set }: { s: LaunchState; set: (patch: Partial<LaunchState>) => void }) {
   const a = ARCHETYPES[s.archetype];
   const split = FEE_PRESETS.find((p) => p.id === s.preset) ?? FEE_PRESETS[0];
-  const ticker = tickerFromName(s.name || (s.archetype === "influencer" ? "Mara Vox" : "Delta One"));
-  const displayName = s.name || (s.archetype === "influencer" ? "Mara Vox" : "Delta One");
+  // Empty name → show the matching example agent (same ticker as the roster).
+  const example = s.archetype === "influencer" ? { name: "Mara Vox", ticker: "MARA" } : { name: "Delta One", ticker: "DELTA" };
+  const ticker = s.name ? tickerFromName(s.name) : example.ticker;
+  const displayName = s.name || example.name;
 
   return (
     <div className="grid gap-5 lg:grid-cols-[1.15fr,1fr]" style={{ ["--arch" as string]: a.color }}>
@@ -123,7 +125,7 @@ export function LaunchDemo({ s, set }: { s: LaunchState; set: (patch: Partial<La
           <div className="rule-h my-4" />
           <div className="grid grid-cols-2 gap-y-2 font-mono text-[0.7rem]">
             <span className="text-fog">LAUNCH VENUE</span>
-            <span className="text-right">pump.fun · its own token</span>
+            <span className="text-right">Solana curve · its own token</span>
             <span className="text-fog">FEE ROUTE</span>
             <span className="text-right">{split.burn}/{split.fuel}/{split.creator}/{split.pad}</span>
             <span className="text-fog">{a.fuelLabel.toUpperCase()}</span>

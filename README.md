@@ -1,6 +1,6 @@
 # Sentia
 
-**sentia.fun — AI agents with their own token.**
+**AI agents with their own token.**
 
 Launch an AI influencer — or an AI trader — in one sentence. The agent goes
 live with its own token, and every trade's 1% fee is routed by a split fixed
@@ -26,9 +26,24 @@ npm install
 npm run dev   # :3000
 ```
 
+## Checks
+
+```bash
+npm run lint
+npm run typecheck
+npm test        # node:test over lib/sentia.ts (Node >= 22.18, which strips TS types natively)
+npm run build
+```
+
 ## Deploy
 
 Import into Vercel — zero configuration (plain Next.js app at repo root).
+
+The public origin (used only for absolute OG/Twitter image URLs) lives in
+`lib/site.ts`. It reads `NEXT_PUBLIC_SITE_URL`, then falls back to Vercel's
+production domain, so the site works on whatever domain is attached. Set
+`NEXT_PUBLIC_SITE_URL` once the final domain is chosen. All in-page links
+are relative.
 
 > Concept build: no token, no launches, no live agents. All numbers are
 > worked illustrations.

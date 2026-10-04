@@ -220,3 +220,8 @@ body::after {
   .talent-card::after { animation: none; }
   html { scroll-behavior: auto; }
 }
+
+/* keep anchored sections clear of the sticky header */
+section[id] {
+  scroll-margin-top: 64px;
+}

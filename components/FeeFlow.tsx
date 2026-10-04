@@ -61,12 +61,12 @@ export function FeeFlow({
 
   return (
     <section ref={sectionRef} className="relative" style={{ height: "400vh", ["--arch" as string]: a.color }} id="fees">
-      <div className="sticky top-0 flex min-h-screen flex-col justify-center py-10">
+      <div className="sticky top-[57px] flex min-h-[calc(100vh-57px)] flex-col justify-center py-4 sm:py-10">
         <div className="wrap">
-          <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3 sm:mb-5">
             <div>
               <div className="eyebrow mb-1.5">Follow one fee</div>
-              <h2 className="font-sans text-2xl font-extrabold sm:text-3xl">
+              <h2 className="font-sans text-xl font-extrabold sm:text-3xl">
                 A $1,000 buy pays $10. <span className="text-fog">Scroll to route it.</span>
               </h2>
             </div>
@@ -87,18 +87,18 @@ export function FeeFlow({
             </div>
           </div>
 
-          <div className="grid gap-4 lg:grid-cols-[1.5fr,1fr]">
+          <div className="grid gap-3 sm:gap-4 lg:grid-cols-[1.5fr,1fr]">
             {/* the pipeline panel */}
-            <div className="panel p-5 sm:p-7">
-              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center">
+            <div className="panel p-4 sm:p-7">
+              <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:items-center sm:gap-1.5">
                 {FEE_STAGES.map((st, i) => (
-                  <div key={st.label} className="flex items-center gap-2">
+                  <div key={st.label} className="flex items-center gap-1.5">
                     <div className="stage-node w-full text-center sm:w-auto" data-state={stageState(i)}>
                       {st.label}
                     </div>
                     {i < N - 1 && (
-                      <svg width="20" height="8" className="hidden shrink-0 sm:block" aria-hidden>
-                        <line x1="0" y1="4" x2="20" y2="4" strokeWidth="2"
+                      <svg width="14" height="8" className="hidden shrink-0 sm:block" aria-hidden>
+                        <line x1="0" y1="4" x2="14" y2="4" strokeWidth="2"
                           stroke={i < stage ? a.color : "rgba(240,238,234,0.18)"}
                           className={i === stage - 1 || i === stage ? "wire" : ""} />
                       </svg>
@@ -111,7 +111,7 @@ export function FeeFlow({
                 <div className="h-full rounded-full transition-[width] duration-150" style={{ width: `${progress * 100}%`, background: a.color }} />
               </div>
 
-              <div className="mt-6 min-h-[170px] sm:min-h-[140px]">
+              <div className="mt-4 min-h-[150px] sm:mt-6 sm:min-h-[140px]">
                 {FEE_STAGES.map((st, i) => (
                   <div key={i} style={{ display: i === stage ? "block" : "none" }}>
                     <div className="font-mono text-[0.66rem] uppercase tracking-[0.2em]" style={{ color: a.color }}>
@@ -127,14 +127,14 @@ export function FeeFlow({
             </div>
 
             {/* the live pots */}
-            <aside className="card p-5 sm:p-6">
+            <aside className="card p-4 sm:p-6">
               <div className="flex items-baseline justify-between">
                 <span className="font-mono text-[0.66rem] uppercase tracking-[0.16em] text-fog">one fee · $10.00</span>
                 <span className="rounded-full border px-2 py-0.5 font-mono text-[0.6rem] uppercase tracking-[0.12em]" style={{ borderColor: a.color, color: a.color }}>
                   {a.label}
                 </span>
               </div>
-              <div className="mt-4 space-y-3">
+              <div className="mt-3 space-y-2.5 sm:mt-4 sm:space-y-3">
                 {pots.map((p) => {
                   const lit = stage >= p.at;
                   const fill = stage > p.at ? 1 : stage === p.at ? intra : 0;
@@ -151,7 +151,7 @@ export function FeeFlow({
                   );
                 })}
               </div>
-              <div className="rule-h my-4" />
+              <div className="rule-h my-3 sm:my-4" />
               <div className="font-mono text-[0.68rem] leading-relaxed text-fog">
                 {stage >= 5 ? (
                   <span style={{ color: a.color }}>
@@ -161,7 +161,7 @@ export function FeeFlow({
                   "agent idle — fees still routing"
                 )}
               </div>
-              <p className="mt-3 text-[0.68rem] leading-relaxed text-fog">
+              <p className="mt-3 hidden text-[0.68rem] leading-relaxed text-fog sm:block">
                 Worked example with the {split.name} route. Change the route in the launch desk above — this page
                 recomputes.
               </p>

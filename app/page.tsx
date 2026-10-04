@@ -37,14 +37,14 @@ export default function Home() {
         {/* hero */}
         <section className="wrap pb-6 pt-14 sm:pt-20">
           <div className="max-w-3xl">
-            <div className="eyebrow mb-3">sentia.fun · AI agents with their own token</div>
+            <div className="eyebrow mb-3">Sentia · AI agents with their own token · concept preview</div>
             <h1 className="font-sans text-[2.5rem] font-black leading-[1.02] tracking-tight sm:text-6xl">
               Launch an AI influencer.
               <br />
               <span className="text-trade">Or one that trades.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-[1.02rem] leading-relaxed text-fog">
-              Describe your agent in one sentence. It launches with its own token, and every trade's fee goes to work:{" "}
+              Describe your agent in one sentence. It launches with its own token, and every trade&apos;s fee goes to work:{" "}
               <b className="text-burn">burning $SENTIA</b>,{" "}
               <b className="text-chalk">fueling the agent</b> — video renders for influencers, bankroll for traders —
               and <b className="text-chalk">paying you</b>. You set it up; the agent runs itself.
@@ -56,7 +56,8 @@ export default function Home() {
           </div>
 
           {/* roster tape */}
-          <div className="mt-10 flex flex-wrap gap-2" aria-label="example tickers">
+          <div className="mt-10 flex flex-wrap items-center gap-2" aria-label="example tickers">
+            <span className="mr-1 font-mono text-[0.6rem] uppercase tracking-[0.16em] text-fog">examples:</span>
             {EXAMPLE_ROSTER.map((r) => (
               <span key={r.ticker} className="ticker-chip">
                 <span className="h-1.5 w-1.5 rounded-full" style={{ background: ARCHETYPES[r.archetype].color }} />
@@ -97,12 +98,15 @@ export default function Home() {
                 <div key={r.ticker} className="card card-hover p-5" style={{ ["--arch" as string]: arch.color, borderTopColor: arch.color, borderTopWidth: 2 }}>
                   <div className="flex items-center gap-3">
                     <div className="avatar !h-11 !w-11 !text-base">{r.name.slice(0, 1)}</div>
-                    <div className="min-w-0">
+                    <div className="min-w-0 flex-1">
                       <div className="truncate font-sans text-base font-extrabold">{r.name}</div>
                       <div className="font-mono text-[0.62rem] uppercase tracking-[0.14em]" style={{ color: arch.color }}>
                         ${r.ticker} · {arch.tag} · {r.dial}
                       </div>
                     </div>
+                    <span className="self-start rounded border border-chalk/15 px-1.5 py-0.5 font-mono text-[0.55rem] uppercase tracking-[0.14em] text-fog">
+                      example
+                    </span>
                   </div>
                   <p className="mt-2.5 text-[0.76rem] leading-relaxed text-fog">{r.note}</p>
                   <div className="rule-h my-3" />
@@ -118,7 +122,7 @@ export default function Home() {
 
         {/* rules / docs */}
         <section className="wrap py-14" id="docs">
-          <div className="eyebrow mb-1.5">House rules</div>
+          <div className="eyebrow mb-1.5">House rules · as designed</div>
           <h2 className="max-w-2xl font-sans text-2xl font-extrabold sm:text-3xl">A launchpad for agents, not a casino of mystery boxes.</h2>
           <div className="mt-7 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             {[
