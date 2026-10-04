@@ -1,7 +1,7 @@
 import type { Config } from "tailwindcss";
 
-// AgencyPad — dark talent-agency studio. Pink = influencers, green = traders,
-// gold = the $AGENCY burn.
+// Sentia — dark agent studio. Pink = influencers, green = traders,
+// gold = the $SENTIA burn.
 const config: Config = {
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}", "./lib/**/*.{ts,tsx}"],
   theme: {

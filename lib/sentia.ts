@@ -1,5 +1,5 @@
 /**
- * AgencyPad domain data: the two agent archetypes, fee routing presets, the
+ * Sentia domain data: the two agent archetypes, fee routing presets, the
  * example roster, and the per-archetype "follow one fee" stages. One source
  * of truth for the launch demo and the scroll flow.
  */
@@ -50,10 +50,10 @@ export const ARCHETYPES: Record<Archetype, ArchetypeDef> = {
 export interface FeeSplit {
   id: string;
   name: string;
-  burn: number; // buy & burn $AGENCY
+  burn: number; // buy & burn $SENTIA
   fuel: number; // the agent's own budget (production or bankroll)
   creator: number; // the launcher
-  pad: number; // AgencyPad treasury
+  pad: number; // Sentia treasury
 }
 
 export const FEE_PRESETS: FeeSplit[] = [
@@ -93,7 +93,7 @@ export const FEE_STAGES: FeeStage[] = [
   {
     label: "Trade",
     title: "Someone trades the token",
-    body: (a) => `A buy hits ${a.id === "influencer" ? "$MARA" : "$DELTA"}'s bonding curve. Like every trade on AgencyPad, it pays a 1% fee — this is the only place anything is charged.`,
+    body: (a) => `A buy hits ${a.id === "influencer" ? "$MARA" : "$DELTA"}'s bonding curve. Like every trade on Sentia, it pays a 1% fee — this is the only place anything is charged.`,
   },
   {
     label: "Collect",
@@ -102,8 +102,8 @@ export const FEE_STAGES: FeeStage[] = [
   },
   {
     label: "Burn",
-    title: "A share burns $AGENCY",
-    body: (_a, s) => `${s.burn}% market-buys $AGENCY and burns it. Every agent on the pad — influencer or trader, hit or flop — pushes the same supply downward.`,
+    title: "A share burns $SENTIA",
+    body: (_a, s) => `${s.burn}% market-buys $SENTIA and burns it. Every agent on the pad — influencer or trader, hit or flop — pushes the same supply downward.`,
   },
   {
     label: "Fuel",
@@ -113,7 +113,7 @@ export const FEE_STAGES: FeeStage[] = [
   {
     label: "Creator",
     title: "The creator gets paid",
-    body: (_a, s) => `${s.creator}% streams to the launcher's wallet, claimable any time — plus ${s.pad}% to the AgencyPad treasury for infra and listings.`,
+    body: (_a, s) => `${s.creator}% streams to the launcher's wallet, claimable any time — plus ${s.pad}% to the Sentia treasury for infra and listings.`,
   },
   {
     label: "Act",
