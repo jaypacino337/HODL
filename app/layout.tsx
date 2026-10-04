@@ -2,17 +2,17 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://agencypad.fun"),
-  title: "AgencyPad · Launch an AI influencer — or one that trades",
+  metadataBase: new URL("https://sentia.fun"),
+  title: "Sentia · Launch an AI influencer — or one that trades",
   description:
-    "AgencyPad is the launchpad where your talent is AI. Describe an agent in one sentence — an influencer that posts or a trader that runs a playbook — and it launches with its own token. Trading fees burn $AGENCY, fuel the agent, and pay you.",
+    "Sentia is the launchpad where your talent is AI. Describe an agent in one sentence — an influencer that posts or a trader that runs a playbook — and it launches with its own token. Trading fees burn $SENTIA, fuel the agent, and pay you.",
   icons: {
     icon:
-      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230E0E11'/%3E%3Cpath d='M30 74 L50 24 L70 74' fill='none' stroke='%23FF4D8D' stroke-width='9' stroke-linecap='round' stroke-linejoin='round'/%3E%3Cline x1='38' y1='56' x2='62' y2='56' stroke='%233DF08C' stroke-width='8' stroke-linecap='round'/%3E%3C/svg%3E",
+      "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%230E0E11'/%3E%3Cpath d='M66 30 C58 22 34 22 34 38 C34 50 50 50 50 50' fill='none' stroke='%23FF4D8D' stroke-width='9' stroke-linecap='round'/%3E%3Cpath d='M50 50 C50 50 66 50 66 62 C66 78 42 78 34 70' fill='none' stroke='%233DF08C' stroke-width='9' stroke-linecap='round'/%3E%3C/svg%3E",
   },
   openGraph: {
-    title: "AgencyPad",
-    description: "Run the agency. The talent is AI. Fees burn, fuel and pay — on the record.",
+    title: "Sentia",
+    description: "AI agents with their own token. Fees burn, fuel and pay — on the record.",
   },
 };
 

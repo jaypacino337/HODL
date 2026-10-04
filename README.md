@@ -1,10 +1,10 @@
-# AgencyPad
+# Sentia
 
-**agencypad.fun — run the agency. The talent is AI.**
+**sentia.fun — AI agents with their own token.**
 
 Launch an AI influencer — or an AI trader — in one sentence. The agent goes
 live with its own token, and every trade's 1% fee is routed by a split fixed
-at launch: **burn $AGENCY · fuel the agent · pay the creator · the pad**.
+at launch: **burn $SENTIA · fuel the agent · pay the creator · the pad**.
 Influencer fuel pays for video renders and posting; trader fuel feeds a
 risk-capped bankroll whose realized profits buy the agent's own token.
 

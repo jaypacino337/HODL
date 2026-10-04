@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ARCHETYPES, FEE_PRESETS, FEE_STAGES, type Archetype } from "@/lib/agency";
+import { ARCHETYPES, FEE_PRESETS, FEE_STAGES, type Archetype } from "@/lib/sentia";
 
 /**
  * The scroll-driven fee. A tall pinned section walks one 1% trading fee from
@@ -53,7 +53,7 @@ export function FeeFlow({
   // the example trade: 1,000 USDC buy → 1% fee = $10
   const FEE = 10;
   const pots = [
-    { k: "burn", label: "burn $AGENCY", amt: (FEE * split.burn) / 100, color: "#F2B705", at: 2 },
+    { k: "burn", label: "burn $SENTIA", amt: (FEE * split.burn) / 100, color: "#F2B705", at: 2 },
     { k: "fuel", label: a.fuelLabel.toLowerCase(), amt: (FEE * split.fuel) / 100, color: a.color, at: 3 },
     { k: "creator", label: "creator", amt: (FEE * split.creator) / 100, color: "#F0EEEA", at: 4 },
     { k: "pad", label: "the pad", amt: (FEE * split.pad) / 100, color: "#55545c", at: 4 },

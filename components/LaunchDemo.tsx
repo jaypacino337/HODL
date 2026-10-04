@@ -1,6 +1,6 @@
 "use client";
 
-import { ARCHETYPES, FEE_PRESETS, tickerFromName, type Archetype, type FeeSplit } from "@/lib/agency";
+import { ARCHETYPES, FEE_PRESETS, tickerFromName, type Archetype, type FeeSplit } from "@/lib/sentia";
 
 export interface LaunchState {
   archetype: Archetype;
@@ -92,13 +92,13 @@ export function LaunchDemo({ s, set }: { s: LaunchState; set: (patch: Partial<La
               ))}
             </div>
             <div className="split-bar mt-4">
-              <div style={{ width: `${split.burn}%`, background: "#F2B705" }} title="burn $AGENCY" />
+              <div style={{ width: `${split.burn}%`, background: "#F2B705" }} title="burn $SENTIA" />
               <div style={{ width: `${split.fuel}%`, background: a.color }} title={a.fuelLabel} />
               <div style={{ width: `${split.creator}%`, background: "#F0EEEA" }} title="creator" />
-              <div style={{ width: `${split.pad}%`, background: "#55545c" }} title="AgencyPad" />
+              <div style={{ width: `${split.pad}%`, background: "#55545c" }} title="Sentia" />
             </div>
             <div className="mt-2.5 grid grid-cols-2 gap-x-4 gap-y-1 font-mono text-[0.62rem] uppercase tracking-[0.1em] text-fog sm:grid-cols-4">
-              <span><b className="text-burn">{split.burn}%</b> burn $AGENCY</span>
+              <span><b className="text-burn">{split.burn}%</b> burn $SENTIA</span>
               <span><b style={{ color: a.color }}>{split.fuel}%</b> {a.fuelLabel.split(" ")[0]}</span>
               <span><b className="text-chalk">{split.creator}%</b> creator</span>
               <span><b>{split.pad}%</b> the pad</span>
