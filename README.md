@@ -1,6 +1,6 @@
-# Crowdy.fun
+# Rallypot
 
-**Somebody says let's do this. Holders decide if it happens.**
+**Rally the holders. Hit the goal, or everyone gets their SOL back.**
 
 Holder-gated, all-or-nothing crowdfunding on Solana. Post an idea, set a goal, set a
 deadline. Hit the goal and the money is released. Miss it and every backer takes their
@@ -34,17 +34,17 @@ immediately and can never move money to them.
 ## Layout
 
 ```
-config/crowdy.ts                 every address, amount and tunable. One file.
-programs/crowdy-campaign/        the Anchor program
-packages/crowdy-site/            Next.js + TypeScript + Tailwind
-tests/unit/crowdy.test.ts        runnable now, no chain needed
+config/rallypot.ts                 every address, amount and tunable. One file.
+programs/rallypot-campaign/        the Anchor program
+packages/rallypot-site/            Next.js + TypeScript + Tailwind
+tests/unit/rallypot.test.ts        runnable now, no chain needed
 ```
 
 ## Commands
 
 ```bash
 npm install
-npm run dev            # Crowdy at localhost:3000
+npm run dev            # Rallypot at localhost:3000
 npm run build          # production build
 npm test               # unit tests + cargo check
 ```
@@ -70,7 +70,7 @@ deploying anything** — that is the gap between "compiles" and "works".
 1. **The gate token mint** — set `NEXT_PUBLIC_GATE_MINT`. Until then the site renders
    an honest "not configured" state rather than pretending.
 2. **Gate amount and decimals** — currently 1,000,000 tokens at 6 decimals. Both are
-   single constants in `config/crowdy.ts`.
+   single constants in `config/rallypot.ts`.
 3. **Fee destination** — set at `initialize_platform`.
 
 ## Design note

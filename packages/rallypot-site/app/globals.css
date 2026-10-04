@@ -1,0 +1,75 @@
+@import url("https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400..800&family=IBM+Plex+Mono:wght@400;500&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    @apply bg-bg text-text font-sans antialiased;
+  }
+
+  body {
+    /* Halftone dots, like a screen-printed poster. Faint enough to sit under text. */
+    background-image: radial-gradient(rgba(23, 21, 15, 0.09) 1px, transparent 1.2px);
+    background-size: 14px 14px;
+  }
+
+  h1 {
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .tnum {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum";
+  }
+
+  ::selection {
+    @apply bg-accent text-white;
+  }
+}
+
+@layer components {
+  .card {
+    @apply rounded-xl border-2 border-ink bg-surface shadow-card;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center gap-2 rounded-xl border border-edge
+           bg-raised px-4 py-2.5 text-sm font-medium text-text
+           transition hover:border-ink hover:bg-edge
+           disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:border-edge
+           disabled:hover:bg-raised;
+  }
+
+  .btn-primary {
+    @apply border-2 border-ink bg-accent font-semibold text-white shadow-card
+           hover:-translate-x-px hover:-translate-y-px hover:bg-accent-dim
+           disabled:hover:translate-x-0 disabled:hover:translate-y-0 disabled:hover:bg-accent;
+  }
+
+  .btn-ghost {
+    @apply border-transparent bg-transparent hover:bg-raised;
+  }
+
+  .input {
+    @apply w-full rounded-xl border-2 border-edge bg-surface px-3.5 py-2.5 text-sm
+           outline-none transition-colors placeholder:text-muted
+           focus:border-ink;
+  }
+
+  .label {
+    @apply text-[11px] font-medium uppercase tracking-wider text-muted;
+  }
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full border border-edge
+           px-2.5 py-1 text-[11px] font-medium;
+  }
+}

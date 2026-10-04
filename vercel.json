@@ -1,7 +1,7 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "npm run build:crowdy",
-  "outputDirectory": "packages/crowdy-site/.next",
+  "buildCommand": "npm run build:rallypot",
+  "outputDirectory": "packages/rallypot-site/.next",
   "installCommand": "npm install",
   "framework": "nextjs"
 }
