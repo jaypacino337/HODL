@@ -1344,7 +1344,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "rallypot-campaign"
+name = "rally-campaign"
 version = "0.1.0"
 dependencies = [
  "anchor-lang",

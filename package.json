@@ -7,9 +7,9 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build:rallypot",
+    "build": "npm run build:rally",
     "build:site": "npm run build --workspace packages/pumpbrokers-site",
-    "dev": "npm run dev:rallypot",
+    "dev": "npm run dev:rally",
     "test": "npm run test:unit && npm run check:programs",
     "test:unit": "node --test \"tests/unit/*.test.ts\"",
     "check:programs": "cargo check --workspace",
@@ -17,8 +17,8 @@
     "verify": "node scripts/verify-deployment.ts",
     "launch": "node scripts/set-active.ts --active true",
     "rollback": "node scripts/set-active.ts --active false",
-    "build:rallypot": "npm run build --workspace packages/rallypot-site",
-    "dev:rallypot": "npm run dev --workspace packages/rallypot-site",
+    "build:rally": "npm run build --workspace packages/rally-site",
+    "dev:rally": "npm run dev --workspace packages/rally-site",
     "build:pumpbrokers": "npm run build --workspace packages/pumpbrokers-site",
     "dev:pumpbrokers": "npm run dev --workspace packages/pumpbrokers-site"
   },
